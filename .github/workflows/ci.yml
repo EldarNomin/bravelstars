@@ -24,6 +24,8 @@ jobs:
           gdlint src tests tools
       - name: Тесты
         run: tools/run_tests.sh ~/godot/godot
+      - name: Бенчмарк симуляции (10000 тиков)
+        run: ~/godot/godot --headless --scene res://scenes/bench/bench.tscn -- --bench-sim
 
   android:
     needs: test
@@ -69,4 +71,35 @@ jobs:
         with:
           name: bravelstars-debug-apk
           path: build/bravelstars-debug.apk
+          retention-days: 14
+      - name: Экспорт отдельного APK бенчмарка
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          preset = Path('export_presets.cfg')
+          text = preset.read_text(encoding='utf-8')
+          old_package = 'package/unique_name="com.eldarnomin.bravelstars"'
+          assert old_package in text and 'tools/*, ' in text
+          text = text.replace(old_package, 'package/unique_name="com.eldarnomin.bravelstars.bench"')
+          text = text.replace('tools/*, ', '')
+          text = text.replace('[preset.0.options]', '[preset.0.options]\n'
+              'command_line/extra_args="--scene res://scenes/bench/bench.tscn"', 1)
+          preset.write_text(text, encoding='utf-8')
+          PY
+          ~/godot/godot --headless --export-debug "Android" build/bravelstars-bench.apk
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          with ZipFile('build/bravelstars-bench.apk') as apk:
+              names = apk.namelist()
+              assert apk.testzip() is None
+              assert 'assets/data/maps/_debug_arena.json' in names
+              assert 'assets/tools/bench/bench.gdc' in names
+              assert 'assets/tools/bench/bench_workload.gdc' in names
+              assert 'lib/arm64-v8a/libgodot_android.so' in names
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bravelstars-benchmark-apk
+          path: build/bravelstars-bench.apk
+          if-no-files-found: error
           retention-days: 14

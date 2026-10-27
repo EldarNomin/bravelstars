@@ -18,14 +18,16 @@ jobs:
           key: godot-${{ hashFiles('.godot-version') }}
       - name: Установить Godot
         run: tools/ci_install_godot.sh
+      - name: Бенчмарк симуляции (10000 тиков)
+        run: |
+          ~/godot/godot --headless --editor --import
+          ~/godot/godot --headless --scene res://scenes/bench/bench.tscn -- --bench-sim
       - name: gdlint
         run: |
           pip install "gdtoolkit==4.*"
           gdlint src tests tools
       - name: Тесты
         run: tools/run_tests.sh ~/godot/godot
-      - name: Бенчмарк симуляции (10000 тиков)
-        run: ~/godot/godot --headless --scene res://scenes/bench/bench.tscn -- --bench-sim
 
   android:
     needs: test

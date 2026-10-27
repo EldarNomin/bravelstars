@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="BrawlerData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/attack_data.gd" id="1_atk"]
+[ext_resource type="Script" path="res://src/sim/data/brawler_data.gd" id="2_brw"]
+
+[sub_resource type="Resource" id="Attack_main"]
+script = ExtResource("1_atk")
+kind = 1
+damage = 750
+range_tiles = 7.0
+min_range_tiles = 2.0
+area_radius = 1.2
+flight_time = 0.65
+super_charge_per_hit = 250
+
+[sub_resource type="Resource" id="Attack_super"]
+script = ExtResource("1_atk")
+kind = 1
+damage = 1500
+range_tiles = 7.0
+min_range_tiles = 2.0
+area_radius = 2.0
+flight_time = 0.8
+breaks_walls = true
+
+[resource]
+script = ExtResource("2_brw")
+id = &"shishka"
+display_name = "Шишка"
+description = "Метатель: бросает шишки навесом через стены. Супер — огромная шишка, сносит укрытия."
+max_hp = 2500
+move_speed = 2.3
+max_ammo = 3
+reload_time = 1.9
+attack_cooldown = 0.4
+attack = SubResource("Attack_main")
+super_attack = SubResource("Attack_super")

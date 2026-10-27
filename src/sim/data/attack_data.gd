@@ -15,6 +15,8 @@ enum Kind {
 ## Общий угол разброса снарядов, градусы.
 @export var spread_deg: float = 0.0
 @export var range_tiles: float = 7.0
+## Для LOB: ближе этого не бросает (метатель не может бить себе под ноги).
+@export var min_range_tiles: float = 0.0
 ## Только для STRAIGHT.
 @export var speed: float = 12.0
 @export var projectile_radius: float = 0.2

@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="BrawlerData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/attack_data.gd" id="1_atk"]
+[ext_resource type="Script" path="res://src/sim/data/brawler_data.gd" id="2_brw"]
+[ext_resource type="Script" path="res://src/sim/supers/dash_super.gd" id="3_dash"]
+
+[sub_resource type="Resource" id="Attack_main"]
+script = ExtResource("1_atk")
+kind = 0
+damage = 360
+projectile_count = 5
+spread_deg = 24.0
+range_tiles = 3.5
+speed = 14.0
+projectile_radius = 0.2
+super_charge_per_hit = 50
+
+[sub_resource type="Resource" id="Attack_super"]
+script = ExtResource("1_atk")
+kind = 0
+damage = 1200
+range_tiles = 4.0
+breaks_walls = true
+knockback = 1.5
+
+[resource]
+script = ExtResource("2_brw")
+id = &"anvil"
+display_name = "Наковальня"
+description = "Танк с дробовиком: страшен в упор. Супер — таран: проламывает стены и отбрасывает врагов."
+max_hp = 5600
+move_speed = 2.6
+radius = 0.45
+max_ammo = 3
+reload_time = 1.6
+attack_cooldown = 0.45
+attack = SubResource("Attack_main")
+super_attack = SubResource("Attack_super")
+super_ability = ExtResource("3_dash")

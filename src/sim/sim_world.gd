@@ -104,7 +104,7 @@ func _apply_input(b: SimBrawler, cmd: InputCommand) -> void:
 		return
 	var mv := cmd.move.limit_length(1.0)
 	if mv.length_squared() > 0.0001 and b.knock_ticks == 0:
-		move_with_collision(b, mv * b.data.move_speed * SimConstants.DT)
+		move_with_collision(b, mv * b.data.move_speed * b.speed_mult * SimConstants.DT)
 		b.facing = mv.normalized()
 	if cmd.attack and b.ammo > 0 and b.cooldown_ticks == 0 and b.data.attack != null:
 		b.ammo -= 1
@@ -279,9 +279,7 @@ func is_visible_to(viewer_team: int, b: SimBrawler) -> bool:
 		return true
 	if not b.alive:
 		return false
-	if not map.is_bush_at(b.pos):
-		return true
-	if tick < b.reveal_until_tick:
+	if b.force_visible or not map.is_bush_at(b.pos) or tick < b.reveal_until_tick:
 		return true
 	for v in brawlers:
 		if v.team == viewer_team and v.alive:

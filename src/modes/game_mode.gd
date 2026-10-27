@@ -52,6 +52,12 @@ func on_playing_tick(_world: SimWorld) -> void:
 	pass
 
 
+## Цель для ботов: {"pos": Vector2, "urgent": bool} или пустой словарь.
+## urgent — идти к цели даже во время боя (например, нести добычу домой).
+func bot_objective(_world: SimWorld, _b: SimBrawler) -> Dictionary:
+	return {}
+
+
 ## Вызывается SimWorld при каждом убийстве.
 func on_kill(_world: SimWorld, _victim: SimBrawler, _killer: SimBrawler) -> void:
 	pass

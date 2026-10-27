@@ -3,7 +3,7 @@ extends RefCounted
 ## ИИ одного бота. Каждый тик возвращает InputCommand — такой же, как от игрока.
 ## Видит только то, что видит его команда (SimWorld.is_visible_to), координаты скрытых врагов не читает.
 
-enum State { ROAM, FIGHT, CHASE, RETREAT }
+enum State { ROAM, FIGHT, CHASE, RETREAT, OBJECTIVE }
 
 const WAYPOINT_REACHED: float = 0.35
 const REPATH_TICKS: int = 10
@@ -115,6 +115,12 @@ func _decide(world: SimWorld, me: SimBrawler, target: SimBrawler) -> void:
 
 
 func _steer(world: SimWorld, me: SimBrawler, target: SimBrawler) -> Vector2:
+	var obj: Dictionary = world.mode.bot_objective(world, me) if world.mode != null else {}
+	if not obj.is_empty() and (obj["urgent"] or target == null) and state != State.RETREAT:
+		state = State.OBJECTIVE
+		return _follow(world, me, obj["pos"])
+	if state == State.OBJECTIVE:
+		state = State.ROAM
 	if target == null or (state == State.CHASE and not _memory.has(target.id)):
 		if state != State.ROAM:
 			state = State.ROAM

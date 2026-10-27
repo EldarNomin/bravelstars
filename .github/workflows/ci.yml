@@ -87,7 +87,8 @@ jobs:
           assert manifest.get('package') == 'org.bravelstars.prototype'
           android = '{http://schemas.android.com/apk/res/android}'
           activity = manifest.find('application/activity')
-          assert activity.get(android + 'screenOrientation') == 'sensorLandscape'
+          orientation = activity.get(android + 'screenOrientation')
+          assert orientation in ('sensorLandscape', '6'), orientation
           with zipfile.ZipFile('build/bravelstars-debug.apk') as apk:
               names = apk.namelist()
               assert apk.testzip() is None

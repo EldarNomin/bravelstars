@@ -18,6 +18,8 @@ const RESPAWN: StringName = &"respawn"
 const EXPLOSION: StringName = &"explosion"
 ## cell: Vector2i, tile: SimMap.Tile (что было)
 const TILE_DESTROYED: StringName = &"tile_destroyed"
+## cell: Vector2i, tile: SimMap.Tile (что появилось)
+const TILE_RESTORED: StringName = &"tile_restored"
 ## projectile, pos
 const PROJECTILE_END: StringName = &"projectile_end"
 ## brawler, dir

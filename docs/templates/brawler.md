@@ -26,7 +26,7 @@ id: snake_case, латиница (например, ranger)
 | `attack.range_tiles` | 3–4 | 6–7 | 9–10 | 7 |
 | урон за полный выстрел | 1500–2000 в упор | 1000–1400 | 1200–1600 | 1000–1200 |
 | `reload_time` | 1.5–1.8 | 1.3–1.5 | 1.8–2.2 | 1.6–2.0 |
-| `attack.super_charge_per_hit` | так, чтобы супер копился за 3–5 попаданий; для дробовика делить на число дробин |
+| `attack.super_charge_per_hit` | целое число очков из 1000: 250 = супер за 4 попадания, 340 = за 3. Для дробовика делить на число дробин |
 
 `max_ammo` = 3 у всех, кроме особых случаев. `attack_cooldown` 0.3–0.5.
 
@@ -59,11 +59,15 @@ func tick(world: SimWorld, caster: SimBrawler) -> void:
 	# длительные эффекты
 	...
 
+func reset() -> void:
+	# смерть/возрождение: обнулить все поля состояния
+	...
+
 func blocks_input() -> bool:
 	return false
 ```
 
-Можно пользоваться только API `SimWorld`: `fire_attack`, `damage`, `heal`, `move_with_collision`, `destroy_tile`, `enemies_of`, `is_visible_to`, `autoaim_vector`, `rng`, `events`. Нельзя: `Input`, `Time`, `randf()`, узлы сцены.
+Можно пользоваться только API `SimWorld`: `fire_attack`, `damage`, `heal`, `move_with_collision`, `destroy_tile`, `enemies_of`, `is_visible_to`, `autoaim_vector`, `rng`, `emit`. Нельзя: `Input`, `Time`, `randf()`, узлы сцены.
 Состояние супера храните в полях класса — у каждого героя свой экземпляр — и **обязательно сбрасывайте его в `reset()`** (вызывается при смерти и возрождении).
 События — только через `world.emit(SimEvents.<ТИП>, {...})`; новый тип события добавляйте в `src/sim/sim_events.gd`.
 

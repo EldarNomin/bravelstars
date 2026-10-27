@@ -150,7 +150,7 @@ func test_dash_super() -> void:
 	me.super_charge = SimConstants.SUPER_CHARGE_MAX
 	w.set_input(me.id, InputCommand.create(Vector2.ZERO, false, Vector2.ZERO, true, Vector2.RIGHT))
 	SimFixtures.run(w, 15)
-	assert_almost_eq(me.pos.x, 5.5 + DashSuper.DISTANCE, 0.01)
+	assert_almost_eq(me.pos.x, 5.5 + me.data.super_attack.range_tiles, 0.01)
 	assert_eq(enemy.hp, 1000, "задет рывком")
 
 

@@ -193,7 +193,7 @@ func fire_attack(caster: SimBrawler, attack: AttackData, aim: Vector2, is_super:
 		if attack.kind == AttackData.Kind.LOB:
 			var dist := attack.range_tiles
 			if aim_vec.length_squared() > 0.0001:
-				dist = minf(aim_vec.length(), attack.range_tiles)
+				dist = clampf(aim_vec.length(), attack.min_range_tiles, attack.range_tiles)
 			p.target = caster.pos + p.dir * dist
 			p.flight_ticks = maxi(1, SimConstants.ticks(attack.flight_time))
 		projectiles.append(p)

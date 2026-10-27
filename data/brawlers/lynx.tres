@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="BrawlerData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/sim/data/attack_data.gd" id="1_atk"]
+[ext_resource type="Script" path="res://src/sim/data/brawler_data.gd" id="2_brw"]
+
+[sub_resource type="Resource" id="Attack_main"]
+script = ExtResource("1_atk")
+kind = 0
+damage = 820
+projectile_count = 1
+spread_deg = 0.0
+range_tiles = 9.0
+speed = 18.0
+projectile_radius = 0.15
+super_charge_per_hit = 340
+
+[sub_resource type="Resource" id="Attack_super"]
+script = ExtResource("1_atk")
+kind = 0
+damage = 1800
+projectile_count = 1
+range_tiles = 11.0
+speed = 22.0
+projectile_radius = 0.25
+pierce = true
+
+[resource]
+script = ExtResource("2_brw")
+id = &"lynx"
+display_name = "Рысь"
+description = "Снайпер. Одна точная пуля издалека; супер — пробивающий выстрел через всю линию."
+max_hp = 2600
+move_speed = 2.3
+max_ammo = 3
+reload_time = 2.0
+attack_cooldown = 0.5
+attack = SubResource("Attack_main")
+super_attack = SubResource("Attack_super")

@@ -29,6 +29,19 @@ func test_profile_for_gives_each_hero_its_own_profile() -> void:
 	assert_gt(anvil.bush_preference, 0.7, "Наковальня любит кусты")
 
 
+func test_profiles_are_copies_not_shared_resource() -> void:
+	var w := SimWorld.new(SimMap.from_lines(PackedStringArray(["X1X", "X.X", "X2X"])), 1)
+	var bots := BotTeam.new(w)
+	var first := bots.add(w.add_brawler(_hero(&"lynx"), 0))
+	var second := bots.add(w.add_brawler(_hero(&"lynx"), 1))
+	assert_ne(first.profile, second.profile, "у каждого бота своя копия профиля")
+	first.profile.skill = 0.99
+	first.profile.retreat_hp = 0.9
+	assert_ne(second.profile.skill, 0.99, "правка профиля одного бота не меняет другого")
+	assert_ne(second.profile.retreat_hp, 0.9, "правка профиля одного бота не меняет другого")
+	assert_ne(BotRoles.profile_for(&"lynx"), first.profile, "и не портит ресурс-источник")
+
+
 ## Один матч ботов 3v3. Возвращает дистанции до ближайшего видимого врага в бою
 ## (состояние FIGHT; сумма/число замеров по героям), убийства и смерти по героям.
 func _run_match(seed_value: int) -> Dictionary:

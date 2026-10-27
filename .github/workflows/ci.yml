@@ -35,9 +35,7 @@ jobs:
           done
           blender -b --python-exit-code 1 -P tools/blender/build_heroes.py -- --output-dir "$RUNNER_TEMP/a02-heroes"
           blender -b --python-exit-code 1 -P tools/blender/verify_heroes.py -- --input-dir "$RUNNER_TEMP/a02-heroes"
-          for model in "$RUNNER_TEMP"/a02-heroes/*.glb; do
-            cmp "$model" "assets/models/heroes/$(basename "$model")"
-          done
+          blender -b --python-exit-code 1 -P tools/blender/compare_heroes.py -- --rebuilt "$RUNNER_TEMP/a02-heroes" --committed assets/models/heroes
       - name: Проверить импорт в Godot
         run: |
           set -euo pipefail

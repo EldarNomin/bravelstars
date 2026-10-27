@@ -17,7 +17,7 @@ func activate(world: SimWorld, caster: SimBrawler, aim: Vector2) -> void:
 	_ticks_left = SimConstants.ticks(DURATION)
 	_hit.clear()
 	caster.facing = _dir
-	world.events.append({"type": "dash_start", "brawler": caster.id, "dir": _dir})
+	world.emit(SimEvents.DASH_START, {"brawler": caster.id, "dir": _dir})
 
 
 func tick(world: SimWorld, caster: SimBrawler) -> void:
@@ -32,6 +32,11 @@ func tick(world: SimWorld, caster: SimBrawler) -> void:
 			_hit.append(e.id)
 			if atk != null:
 				world.damage(e, atk.damage, caster, atk, true, caster.pos)
+
+
+func reset() -> void:
+	_ticks_left = 0
+	_hit.clear()
 
 
 func blocks_input() -> bool:

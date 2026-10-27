@@ -25,6 +25,8 @@ var spawns: Dictionary = {}
 var markers: Dictionary = {}
 ## Произвольные поля из JSON (режим, автор...).
 var meta: Dictionary = {}
+## Ошибки разбора. Пустой список — карта корректна.
+var errors: PackedStringArray = PackedStringArray()
 
 
 static func from_lines(lines: PackedStringArray, p_name: String = "") -> SimMap:
@@ -33,8 +35,11 @@ static func from_lines(lines: PackedStringArray, p_name: String = "") -> SimMap:
 	m.height = lines.size()
 	for line in lines:
 		m.width = maxi(m.width, line.length())
+	for y in m.height:
+		if lines[y].length() != m.width:
+			m.errors.append("строка %d: длина %d, ожидается %d" % [y, lines[y].length(), m.width])
 	m.tiles.resize(m.width * m.height)
-	m.tiles.fill(Tile.FLOOR)
+	m.tiles.fill(Tile.HARD_WALL)
 	for y in m.height:
 		var line: String = lines[y]
 		for x in line.length():
@@ -43,14 +48,20 @@ static func from_lines(lines: PackedStringArray, p_name: String = "") -> SimMap:
 			if CHAR_TO_TILE.has(c):
 				m.tiles[y * m.width + x] = CHAR_TO_TILE[c]
 			elif c >= "1" and c <= "9":
+				m.tiles[y * m.width + x] = Tile.FLOOR
 				var team := c.to_int() - 1
 				if not m.spawns.has(team):
 					m.spawns[team] = []
 				m.spawns[team].append(center)
-			else:
+			elif c >= "A" and c <= "Z" and c != "X":
+				m.tiles[y * m.width + x] = Tile.FLOOR
 				if not m.markers.has(c):
 					m.markers[c] = []
 				m.markers[c].append(center)
+			else:
+				m.errors.append("клетка (%d, %d): неизвестный символ '%s'" % [x, y, c])
+	for e in m.errors:
+		push_warning("SimMap %s: %s" % [p_name, e])
 	return m
 
 

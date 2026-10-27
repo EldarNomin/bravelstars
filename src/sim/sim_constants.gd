@@ -16,6 +16,9 @@ const BUSH_REVEAL_DISTANCE: float = 2.0
 ## Сколько герой виден из куста после выстрела или попадания по нему.
 const REVEAL_AFTER_ACTION: float = 1.0
 
+## Заряд супера хранится целым числом: супер готов при SUPER_CHARGE_MAX.
+const SUPER_CHARGE_MAX: int = 1000
+
 ## Максимальный шаг перемещения за одну итерацию коллизий.
 const MAX_MOVE_STEP: float = 0.25
 

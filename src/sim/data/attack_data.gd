@@ -26,8 +26,9 @@ enum Kind {
 @export var area_radius: float = 1.0
 ## Для LOB: время полёта.
 @export var flight_time: float = 0.8
-## Сколько заряда супера (0..1) даёт одно попадание снаряда. Для супер-удара игнорируется.
-@export var super_charge_per_hit: float = 0.25
+## Сколько очков заряда супера (из SimConstants.SUPER_CHARGE_MAX = 1000) даёт одно попадание снаряда.
+## 250 = супер за 4 попадания. Для супер-удара игнорируется.
+@export var super_charge_per_hit: int = 250
 ## Отбрасывание цели при попадании, клетки.
 @export var knockback: float = 0.0
 ## Оглушение цели при попадании, секунды.

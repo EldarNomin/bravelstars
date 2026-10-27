@@ -29,14 +29,21 @@ static func create(
 	return cmd
 
 
+## Безопасно для данных из сети: неверные типы и NaN превращаются в «ничего не делать».
 static func from_dict(d: Dictionary) -> InputCommand:
 	return create(
-		d.get("move", Vector2.ZERO),
-		d.get("attack", false),
-		d.get("attack_aim", Vector2.ZERO),
-		d.get("use_super", false),
-		d.get("super_aim", Vector2.ZERO)
+		_vec(d.get("move")).limit_length(1.0),
+		d.get("attack") is bool and d["attack"],
+		_vec(d.get("attack_aim")),
+		d.get("use_super") is bool and d["use_super"],
+		_vec(d.get("super_aim"))
 	)
+
+
+static func _vec(v: Variant) -> Vector2:
+	if v is Vector2 and v.is_finite():
+		return v
+	return Vector2.ZERO
 
 
 func to_dict() -> Dictionary:

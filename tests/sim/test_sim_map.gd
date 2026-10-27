@@ -32,3 +32,17 @@ func test_load_json(params: Variant = use_parameters(["res://data/maps/_debug_ar
 	assert_not_null(m)
 	assert_true(m.spawns.has(0) and m.spawns.has(1), "есть точки обеих команд")
 	assert_eq(m.meta.get("mode"), "deathmatch")
+	assert_eq(m.errors.size(), 0)
+
+
+func test_errors_on_bad_symbols_and_ragged_rows() -> void:
+	var m := SimMap.from_lines(PackedStringArray(["..?.", ".."]))
+	assert_eq(m.errors.size(), 2)
+	assert_eq(m.get_tile(3, 1), SimMap.Tile.HARD_WALL, "короткая строка добивается стеной")
+
+
+func test_input_from_dict_rejects_garbage() -> void:
+	var cmd := InputCommand.from_dict({"move": [1, 2], "attack": "yes", "attack_aim": Vector2(NAN, 1)})
+	assert_eq(cmd.move, Vector2.ZERO)
+	assert_false(cmd.attack)
+	assert_eq(cmd.attack_aim, Vector2.ZERO)

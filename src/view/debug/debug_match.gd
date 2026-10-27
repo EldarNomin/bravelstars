@@ -1,4 +1,5 @@
 extends Node3D
+## ВРЕМЕННО лежит в папке Antigravity: заменяется настоящим view в C-05..C-07, потом удаляется.
 ## Отладочная сцена: рисует SimWorld примитивами и управляется с клавиатуры/мыши на ПК.
 ## Нужна, чтобы щупать ядро до появления настоящих view/UI (задачи Antigravity C-05..C-07).
 ##
@@ -100,7 +101,7 @@ func _sim_tick() -> void:
 	world.set_input(player.id, cmd)
 	_drive_dummies()
 	world.step()
-	for e in world.events:
+	for e in world.drain_events():
 		if e["type"] == "tile_destroyed" and _tile_nodes.has(e["cell"]):
 			_tile_nodes[e["cell"]].queue_free()
 			_tile_nodes.erase(e["cell"])
@@ -150,7 +151,7 @@ func _render(alpha: float) -> void:
 	_camera.look_at(focus.position)
 	_hud.text = (
 		"HP %d/%d   патроны %d   супер %d%%   убийств %d   смертей %d   тик %d\n"
-		% [player.hp, player.data.max_hp, player.ammo, roundi(player.super_charge * 100),
+		% [player.hp, player.data.max_hp, player.ammo, player.super_charge * 100 / SimConstants.SUPER_CHARGE_MAX,
 			player.kills, player.deaths, world.tick]
 		+ "WASD — бег, ЛКМ — выстрел, E — автоприцел, ПКМ/Пробел — супер, R — заново"
 	)

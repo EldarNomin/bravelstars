@@ -3,3 +3,4 @@ excluded_directories: !!set
   .git: null
   addons: null
   .godot: null
+max-public-methods: 40

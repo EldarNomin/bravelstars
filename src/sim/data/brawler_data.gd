@@ -27,7 +27,17 @@ extends Resource
 @export var super_ability: Script
 
 
+## Ресурс общий для всех копий героя в матче — в симуляции его только читают, никогда не меняют.
 func create_super_ability() -> SuperAbility:
 	if super_ability != null:
-		return super_ability.new() as SuperAbility
+		var ability := super_ability.new() as SuperAbility
+		if ability == null:
+			push_error("BrawlerData %s: super_ability должен наследовать SuperAbility" % id)
+			return SuperAbility.new()
+		return ability
 	return SuperAbility.new()
+
+
+## Есть ли у героя хоть какой-то супер (иначе заряд не тратится впустую).
+func has_super() -> bool:
+	return super_attack != null or super_ability != null

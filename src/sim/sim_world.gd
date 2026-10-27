@@ -11,17 +11,19 @@ var map: SimMap
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var brawlers: Array[SimBrawler] = []
 var projectiles: Array[SimProjectile] = []
-## События текущего тика: {"type": "attack"|"hit"|"death"|"respawn"|"explosion"|"tile_destroyed"|
-## "projectile_end"|"heal", ...}. Очищаются в начале step().
+## Очередь событий для отображения/звука/сети. Копится между вызовами drain_events(),
+## поэтому ничего не теряется, если за кадр прошло несколько тиков. Типы и поля — SimEvents.
 var events: Array[Dictionary] = []
 ## Режимы без возрождения (например «Выживание») ставят false.
 var respawn_enabled: bool = true
 
 var _inputs: Dictionary = {}
+var _by_id: Dictionary = {}
 var _next_id: int = 1
 
 
 func _init(p_map: SimMap, p_seed: int = 0) -> void:
+	assert(p_map != null, "SimWorld: карта не загружена")
 	map = p_map
 	rng.seed = p_seed
 
@@ -35,14 +37,25 @@ func add_brawler(data: BrawlerData, team: int, at: Vector2 = Vector2.INF) -> Sim
 		p = _pick_spawn(team)
 	var b := SimBrawler.new(_alloc_id(), team, data, p)
 	brawlers.append(b)
+	_by_id[b.id] = b
 	return b
 
 
 func get_brawler(id: int) -> SimBrawler:
-	for b in brawlers:
-		if b.id == id:
-			return b
-	return null
+	return _by_id.get(id)
+
+
+## Забрать накопленные события (очередь очищается). Вызывает один потребитель — view или сеть.
+func drain_events() -> Array[Dictionary]:
+	var out := events
+	events = []
+	return out
+
+
+func emit(type: StringName, fields: Dictionary) -> void:
+	fields["type"] = type
+	fields["tick"] = tick
+	events.append(fields)
 
 
 ## Команда действует только на следующий step().
@@ -54,7 +67,6 @@ func set_input(brawler_id: int, cmd: InputCommand) -> void:
 
 
 func step() -> void:
-	events.clear()
 	for b in brawlers:
 		_apply_input(b, _inputs.get(b.id) as InputCommand)
 	for b in brawlers:
@@ -79,18 +91,18 @@ func _apply_input(b: SimBrawler, cmd: InputCommand) -> void:
 		b.cooldown_ticks = SimConstants.ticks(b.data.attack_cooldown)
 		b.last_attack_tick = tick
 		fire_attack(b, b.data.attack, cmd.attack_aim, false)
-	if cmd.use_super and b.super_ready():
-		b.super_charge = 0.0
+	if cmd.use_super and b.super_ready() and b.data.has_super():
+		b.super_charge = 0
 		b.last_attack_tick = tick
+		emit(SimEvents.SUPER, {"brawler": b.id, "aim": cmd.super_aim})
 		b.ability.activate(self, b, cmd.super_aim)
-		events.append({"type": "super", "brawler": b.id})
 
 
 func _update_timers(b: SimBrawler) -> void:
 	if not b.alive:
 		if b.respawn_at_tick >= 0 and tick >= b.respawn_at_tick:
 			b.reset_at(b.spawn_pos)
-			events.append({"type": "respawn", "brawler": b.id})
+			emit(SimEvents.RESPAWN, {"brawler": b.id, "pos": b.pos})
 		return
 	if b.cooldown_ticks > 0:
 		b.cooldown_ticks -= 1
@@ -151,9 +163,10 @@ func fire_attack(caster: SimBrawler, attack: AttackData, aim: Vector2, is_super:
 			p.target = caster.pos + p.dir * dist
 			p.flight_ticks = maxi(1, SimConstants.ticks(attack.flight_time))
 		projectiles.append(p)
-	events.append({"type": "attack", "brawler": caster.id, "super": is_super, "dir": dir})
+	emit(SimEvents.ATTACK, {"brawler": caster.id, "super": is_super, "dir": dir, "pos": caster.pos})
 
 
+## from — точка, ОТ которой отбрасывает цель (для прямого снаряда — позади цели по линии полёта).
 ## Вектор на ближайшего видимого врага в радиусе, или ноль.
 func autoaim_vector(caster: SimBrawler, max_range: float) -> Vector2:
 	var best: SimBrawler = null
@@ -178,11 +191,11 @@ func damage(
 	target.hp -= amount
 	target.last_damage_tick = tick
 	target.reveal_until_tick = tick + SimConstants.ticks(SimConstants.REVEAL_AFTER_ACTION)
-	if source != null and attack != null and not is_super:
-		source.super_charge = minf(1.0, source.super_charge + attack.super_charge_per_hit)
-	events.append({
-		"type": "hit", "target": target.id, "source": source.id if source else 0,
-		"amount": amount, "super": is_super,
+	if source != null and source.alive and attack != null and not is_super:
+		source.add_super_charge(attack.super_charge_per_hit)
+	emit(SimEvents.HIT, {
+		"target": target.id, "source": source.id if source else 0,
+		"amount": amount, "super": is_super, "pos": target.pos,
 	})
 	if target.hp <= 0:
 		_kill(target, source)
@@ -194,7 +207,8 @@ func damage(
 				away = Vector2.RIGHT
 			move_with_collision(target, away * attack.knockback)
 		if attack.stun_time > 0.0:
-			target.stun_ticks = maxi(target.stun_ticks, SimConstants.ticks(attack.stun_time))
+			# +1: таймер уменьшается в этом же тике в _update_timers.
+			target.stun_ticks = maxi(target.stun_ticks, SimConstants.ticks(attack.stun_time) + 1)
 
 
 func heal(target: SimBrawler, amount: int) -> void:
@@ -202,7 +216,7 @@ func heal(target: SimBrawler, amount: int) -> void:
 		return
 	var before := target.hp
 	target.hp = mini(target.data.max_hp, target.hp + amount)
-	events.append({"type": "heal", "target": target.id, "amount": target.hp - before})
+	emit(SimEvents.HEAL, {"target": target.id, "amount": target.hp - before})
 
 
 ## Разрушает стену или куст. Непробиваемые стены и вода не разрушаются.
@@ -210,7 +224,7 @@ func destroy_tile(cell: Vector2i) -> void:
 	var t := map.get_tile(cell.x, cell.y)
 	if t == SimMap.Tile.WALL or t == SimMap.Tile.BUSH:
 		map.set_tile(cell.x, cell.y, SimMap.Tile.FLOOR)
-		events.append({"type": "tile_destroyed", "cell": cell, "tile": t})
+		emit(SimEvents.TILE_DESTROYED, {"cell": cell, "tile": t})
 
 
 ## Видит ли команда viewer_team героя b (кусты). Боты обязаны пользоваться этим, а не читать pos напрямую.
@@ -251,8 +265,13 @@ func _update_projectiles() -> void:
 		else:
 			_update_straight(p)
 		if p.dead:
-			events.append({"type": "projectile_end", "projectile": p.id, "pos": p.pos})
-	projectiles = projectiles.filter(func(p: SimProjectile) -> bool: return not p.dead)
+			emit(SimEvents.PROJECTILE_END, {"projectile": p.id, "pos": p.pos})
+	var i := 0
+	while i < projectiles.size():
+		if projectiles[i].dead:
+			projectiles.remove_at(i)
+		else:
+			i += 1
 
 
 func _update_straight(p: SimProjectile) -> void:
@@ -260,6 +279,7 @@ func _update_straight(p: SimProjectile) -> void:
 	var remaining := minf(a.speed * SimConstants.DT, a.range_tiles - p.traveled)
 	var steps := maxi(1, ceili(remaining / 0.2))
 	var seg := remaining / steps
+	var owner := get_brawler(p.owner_id)
 	for _i in steps:
 		var prev := p.pos
 		p.pos += p.dir * seg
@@ -271,14 +291,13 @@ func _update_straight(p: SimProjectile) -> void:
 		elif SimMap.blocks_projectiles(t):
 			p.dead = true
 			return
-		var owner := get_brawler(p.owner_id)
 		for b in brawlers:
 			if b.team == p.team or not b.alive or b.id in p.hit_ids:
 				continue
 			var closest := Geometry2D.get_closest_point_to_segment(b.pos, prev, p.pos)
 			if closest.distance_to(b.pos) <= b.data.radius + a.projectile_radius:
 				p.hit_ids.append(b.id)
-				damage(b, a.damage, owner, a, p.is_super, prev)
+				damage(b, a.damage, owner, a, p.is_super, b.pos - p.dir)
 				if not a.pierce:
 					p.dead = true
 					return
@@ -304,7 +323,7 @@ func _update_lob(p: SimProjectile) -> void:
 			for x in range(c.x - r, c.x + r + 1):
 				if Vector2(x + 0.5, y + 0.5).distance_to(p.target) <= a.area_radius:
 					destroy_tile(Vector2i(x, y))
-	events.append({"type": "explosion", "pos": p.target, "radius": a.area_radius, "super": p.is_super})
+	emit(SimEvents.EXPLOSION, {"pos": p.target, "radius": a.area_radius, "super": p.is_super})
 	p.dead = true
 
 
@@ -315,12 +334,13 @@ func _kill(target: SimBrawler, killer: SimBrawler) -> void:
 	target.alive = false
 	target.hp = 0
 	target.deaths += 1
-	target.super_charge = 0.0
+	target.super_charge = 0
+	target.ability.reset()
 	if killer != null and killer != target:
 		killer.kills += 1
 	if respawn_enabled:
 		target.respawn_at_tick = tick + SimConstants.ticks(SimConstants.RESPAWN_TIME)
-	events.append({"type": "death", "target": target.id, "killer": killer.id if killer else 0})
+	emit(SimEvents.DEATH, {"target": target.id, "killer": killer.id if killer else 0, "pos": target.pos})
 
 
 func _pick_spawn(team: int) -> Vector2:
@@ -349,6 +369,8 @@ func snapshot() -> Dictionary:
 	return {"tick": tick, "brawlers": bs, "projectiles": ps, "tiles": map.tiles}
 
 
-## Хэш состояния — для тестов детерминированности и сверки клиент/сервер.
+## Хэш состояния — для тестов детерминированности в одном процессе.
+## Неполный и медленный: НЕ вызывать каждый тик и не сверять им клиент с сервером
+## (float на ARM и x86 расходится). Полная сериализация с откатом — задача N-00.
 func state_hash() -> int:
 	return hash(var_to_str(snapshot()))

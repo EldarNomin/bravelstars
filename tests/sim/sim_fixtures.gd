@@ -16,7 +16,7 @@ static func straight_attack(dmg: int = 1000, rng: float = 6.0) -> AttackData:
 	a.damage = dmg
 	a.range_tiles = rng
 	a.speed = 15.0
-	a.super_charge_per_hit = 0.25
+	a.super_charge_per_hit = 250
 	return a
 
 

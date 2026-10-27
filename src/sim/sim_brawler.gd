@@ -16,8 +16,8 @@ var alive: bool = true
 var ammo: int = 0
 var reload_progress: int = 0
 var cooldown_ticks: int = 0
-## 0..1, супер доступен при 1.
-var super_charge: float = 0.0
+## 0..SimConstants.SUPER_CHARGE_MAX, супер доступен при максимуме.
+var super_charge: int = 0
 
 var stun_ticks: int = 0
 var last_damage_tick: int = -100000
@@ -49,6 +49,8 @@ func reset_at(p: Vector2) -> void:
 	cooldown_ticks = 0
 	stun_ticks = 0
 	respawn_at_tick = -1
+	if ability != null:
+		ability.reset()
 
 
 func is_stunned() -> bool:
@@ -56,7 +58,11 @@ func is_stunned() -> bool:
 
 
 func super_ready() -> bool:
-	return super_charge >= 1.0
+	return super_charge >= SimConstants.SUPER_CHARGE_MAX
+
+
+func add_super_charge(points: int) -> void:
+	super_charge = mini(SimConstants.SUPER_CHARGE_MAX, super_charge + points)
 
 
 func to_dict() -> Dictionary:

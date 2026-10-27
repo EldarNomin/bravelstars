@@ -17,6 +17,11 @@ func tick(_world: SimWorld, _caster: SimBrawler) -> void:
 	pass
 
 
+## Сброс состояния при смерти и возрождении. Наследники с полями обязаны его переопределить.
+func reset() -> void:
+	pass
+
+
 ## true — пока идёт эффект, ввод игрока (движение и атаки) игнорируется.
 func blocks_input() -> bool:
 	return false

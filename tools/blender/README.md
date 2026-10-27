@@ -1,8 +1,8 @@
-# A-01: модели окружения
+# Модели окружения и героев
 
 Модели создаются локально скриптами Blender, сторонних ассетов и текстур нет. Для воспроизводимой сборки
-используется **Blender 4.5.15 LTS**. Цвета в `common.py` временно взяты из отладочной сцены; после утверждения
-`docs/STYLE.md` палитру можно заменить в одном месте и пересобрать модели.
+используется **Blender 4.5.15 LTS**. Палитра `STYLE_HEX` в `common.py` соответствует `docs/STYLE.md`;
+цвета переводятся из sRGB в линейное пространство Blender/glTF, оттенки выводятся из базовых цветов.
 
 Из корня проекта:
 
@@ -11,10 +11,15 @@ blender -b --python-exit-code 1 -P tools/blender/build_all.py
 blender -b --python-exit-code 1 -P tools/blender/verify_all.py
 blender -b --python-exit-code 1 -P tools/blender/test_validation.py
 blender -b --python-exit-code 1 -P tools/blender/render_preview.py
+blender -b --python-exit-code 1 -P tools/blender/build_heroes.py
+blender -b --python-exit-code 1 -P tools/blender/verify_heroes.py
+blender -b --python-exit-code 1 -P tools/blender/render_heroes.py
+godot --headless --editor --import
+godot --headless -s tools/blender/check_heroes.gd
 ```
 
-Первая команда перезаписывает десять GLB в `assets/models/env/`; вторая заново импортирует их в Blender и
-проверяет геометрию и материалы, третья рисует `tools/blender/preview.png` из экспортированных GLB. Для
+Первый набор команд пересобирает и проверяет десять GLB окружения и рисует `tools/blender/preview.png`.
+Второй набор пересобирает и проверяет трёх героев, рисует два превью и проверяет импорт в Godot. Для
 сборки во временную папку используйте `-- --output-dir /путь`, для проверки и рендера — `-- --input-dir /путь`.
 Перед сравнением и коммитом файлов, отслеживаемых Git LFS, выполните `git lfs pull`.
 
@@ -22,6 +27,11 @@ blender -b --python-exit-code 1 -P tools/blender/render_preview.py
 вода находится ниже. Экспорт в glTF преобразует Z-up Blender в Y-up Godot. Пол — 1×1×0,055 м, ломаемая
 стена — 1×1×1 м, непробиваемая — 1×1×1,2 м, кусты — до 1×1×0,7 м. Четыре отдельных обломка можно
 использовать при разрушении. Фактическая геометрия каждой модели ограничена 300 треугольниками.
+В A-02 окружение только перекрашено: его высоты пока отличаются от обновлённых значений в `STYLE.md`.
+
+Герои используют одинаковые кости `root`, `spine`, `head_bone`, `arm.L`, `arm.R`, `leg.L`, `leg.R`.
+Сокеты `head` и `muzzle` привязаны к костям. `idle` длится 1,5 с; настройки импорта `.glb.import`
+задают его зацикливание в Godot. Остальные анимации относятся к A-03.
 
 | Модель | Треугольники |
 |---|---:|

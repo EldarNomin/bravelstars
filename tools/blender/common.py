@@ -5,21 +5,32 @@ import math
 import bpy
 
 
-# Temporary colors from src/view/debug/debug_match.gd; replace after STYLE.md is approved.
+# STYLE.md lists sRGB hex colors; Blender and glTF base-color factors use linear RGB.
+STYLE_HEX = {
+    "ground": "7D6B58", "wood": "965A38", "stone": "3E444C",
+    "bush": "2D6A4F", "water": "2A8794", "amber": "F6AD55",
+}
+
+
+def style_color(name, brightness=1.0):
+    value = STYLE_HEX[name]
+    channels = [min(int(value[i:i + 2], 16) / 255.0 * brightness, 1.0) for i in (0, 2, 4)]
+    linear = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+    return (*linear, 1.0)
+
+
 PALETTE = {
-    "sand": (0.82, 0.76, 0.60, 1.0),
-    "sand_detail": (0.69, 0.62, 0.47, 1.0),
-    "wood": (0.60, 0.40, 0.25, 1.0),
-    "wood_frame": (0.39, 0.23, 0.12, 1.0),
-    "wood_light": (0.72, 0.50, 0.31, 1.0),
-    "stone": (0.35, 0.35, 0.40, 1.0),
-    "stone_light": (0.46, 0.47, 0.51, 1.0),
-    "metal": (0.19, 0.22, 0.27, 1.0),
-    "bush": (0.20, 0.65, 0.25, 1.0),
-    "bush_light": (0.32, 0.75, 0.30, 1.0),
-    "bush_dark": (0.12, 0.42, 0.17, 1.0),
-    "water": (0.20, 0.45, 0.85, 1.0),
-    "water_light": (0.43, 0.68, 0.95, 1.0),
+    "sand": style_color("ground"), "sand_detail": style_color("ground", 0.78),
+    "wood": style_color("wood"), "wood_frame": style_color("wood", 0.65),
+    "wood_light": style_color("wood", 1.25),
+    "stone": style_color("stone"), "stone_light": style_color("stone", 1.35),
+    "metal": style_color("stone", 0.65),
+    "bush": style_color("bush"), "bush_light": style_color("bush", 1.25),
+    "bush_dark": style_color("bush", 0.65),
+    "water": style_color("water"), "water_light": style_color("water", 1.30),
+    "fur": style_color("ground", 1.75), "skin": style_color("ground", 1.50),
+    "cloth_lynx": style_color("bush", 0.45), "cloth_anvil": style_color("stone", 0.55),
+    "cloth_shishka": style_color("wood", 0.45), "amber": style_color("amber"),
 }
 
 # (maximum x/y/z span, minimum z, maximum z); Blender coordinates are metres, Z is up.

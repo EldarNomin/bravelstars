@@ -6,6 +6,40 @@ on:
   workflow_dispatch:
 
 jobs:
+  models:
+    name: Blender environment models
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - name: Установить Blender 4.5.15 LTS
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          base="https://download.blender.org/release/Blender4.5"
+          archive="blender-4.5.15-linux-x64.tar.xz"
+          curl --fail --location --retry 3 --silent --show-error -O "$base/$archive"
+          curl --fail --location --retry 3 --silent --show-error -O "$base/blender-4.5.15.sha256"
+          grep " $archive$" blender-4.5.15.sha256 | sha256sum --check --strict
+          tar -xf "$archive"
+          echo "$RUNNER_TEMP/blender-4.5.15-linux-x64" >> "$GITHUB_PATH"
+      - name: Пересобрать и проверить GLB
+        run: |
+          set -euo pipefail
+          blender -b --python-exit-code 1 -P tools/blender/test_validation.py
+          blender -b --python-exit-code 1 -P tools/blender/build_all.py -- --output-dir "$RUNNER_TEMP/a01-models"
+          blender -b --python-exit-code 1 -P tools/blender/verify_all.py -- --input-dir "$RUNNER_TEMP/a01-models"
+          for model in "$RUNNER_TEMP"/a01-models/*.glb; do
+            cmp "$model" "assets/models/env/$(basename "$model")"
+          done
+      - name: Проверить импорт в Godot
+        run: |
+          set -euo pipefail
+          tools/ci_install_godot.sh
+          ~/godot/godot --headless --editor --import
+          ~/godot/godot --headless -s tools/blender/check_godot.gd
+
   test:
     runs-on: ubuntu-latest
     steps:

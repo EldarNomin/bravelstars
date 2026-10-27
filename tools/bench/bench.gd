@@ -42,13 +42,14 @@ func _ready() -> void:
 	last_frame_us = started_us
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	if started_us == 0 or finished:
 		return
 	var now := Time.get_ticks_usec()
-	frame_times.append(float(now - last_frame_us) / 1000000.0)
+	var frame_seconds := float(now - last_frame_us) / 1000000.0
+	frame_times.append(frame_seconds)
 	last_frame_us = now
-	accumulator += delta
+	accumulator += frame_seconds
 	while accumulator >= SimConstants.DT:
 		accumulator -= SimConstants.DT
 		workload.step()

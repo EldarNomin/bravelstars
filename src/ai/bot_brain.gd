@@ -234,6 +234,7 @@ func _combat(world: SimWorld, me: SimBrawler, target: SimBrawler, cmd: InputComm
 		and dist <= atk.range_tiles + target.data.radius * 0.5
 		and _can_hit(world, me, target)
 		and (state != State.RETREAT or dist < atk.range_tiles * 0.6)
+		and _rng.randf() <= profile.trigger_discipline
 	):
 		cmd.attack = true
 		cmd.attack_aim = _aim(me, target, atk)
@@ -262,7 +263,7 @@ func _aim(me: SimBrawler, target: SimBrawler, atk: AttackData) -> Vector2:
 	var travel := atk.flight_time if atk.kind == AttackData.Kind.LOB else to_t.length() / maxf(atk.speed, 0.1)
 	var lead := vel * travel * profile.skill
 	var aim := to_t + lead
-	var err := deg_to_rad(_rng.randf_range(-1.0, 1.0) * 14.0 * (1.0 - profile.skill))
+	var err := deg_to_rad(_rng.randf_range(-1.0, 1.0) * profile.aim_error_deg * (1.0 - profile.skill))
 	return aim.rotated(err)
 
 

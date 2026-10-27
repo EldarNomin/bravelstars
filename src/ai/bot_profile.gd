@@ -14,3 +14,7 @@ extends Resource
 @export var bush_preference: float = 0.6
 ## Сколько секунд помнит, где последний раз видел врага.
 @export var memory_time: float = 2.5
+## Максимальная ошибка прицела в градусах при skill = 0 (масштабируется на 1 - skill).
+@export var aim_error_deg: float = 14.0
+## Вероятность выстрелить, когда выстрел возможен (0..1). Ниже — бот «зевает».
+@export_range(0.0, 1.0) var trigger_discipline: float = 1.0

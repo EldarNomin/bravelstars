@@ -11,7 +11,8 @@ func _init(world: SimWorld) -> void:
 
 
 func add(brawler: SimBrawler, profile: BotProfile = null, seed_value: int = 0) -> BotBrain:
-	var brain := BotBrain.new(brawler.id, nav, profile, seed_value)
+	var prof := profile if profile != null else BotRoles.profile_for(brawler.data.id)
+	var brain := BotBrain.new(brawler.id, nav, prof, seed_value)
 	brains.append(brain)
 	return brain
 

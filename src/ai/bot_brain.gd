@@ -24,7 +24,8 @@ var _memory: Dictionary = {}
 var _roam_goal: Vector2 = Vector2.INF
 var _strafe_sign: float = 1.0
 var _next_think: int = 0
-var _cmd_move: Vector2 = Vector2.ZERO
+## До этого тика бот обходит укрытие к цели, а не стрейфит (против дёрганья у углов).
+var _reposition_until: int = 0
 
 
 func _init(p_brawler_id: int, nav: BotNav, p_profile: BotProfile = null, seed_value: int = 0) -> void:
@@ -134,8 +135,9 @@ func _fight_move(world: SimWorld, me: SimBrawler, target: SimBrawler) -> Vector2
 	var to_t := target.pos - me.pos
 	var dist := to_t.length()
 	var want := _attack_range(me) * profile.preferred_range
-	var clear := _can_hit(world, me, target)
-	if dist > want or not clear:
+	if not _can_hit(world, me, target):
+		_reposition_until = world.tick + 15
+	if dist > want or world.tick < _reposition_until:
 		return _follow(world, me, target.pos)
 	var dir := to_t.normalized() if dist > 0.01 else Vector2.RIGHT
 	var strafe := Vector2(-dir.y, dir.x) * _strafe_sign
@@ -244,7 +246,7 @@ func _can_hit_with(world: SimWorld, me: SimBrawler, target: SimBrawler, atk: Att
 		return false
 	if atk.kind == AttackData.Kind.LOB or atk.breaks_walls:
 		return true
-	return world.map.has_line_of_fire(me.pos, target.pos)
+	return world.map.has_line_of_fire(me.pos, target.pos, atk.projectile_radius + 0.1)
 
 
 ## Прицел с упреждением и ошибкой, зависящими от skill.

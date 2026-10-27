@@ -164,9 +164,16 @@ func _push_out_of_cell(p: Vector2, x: int, y: int, radius: float) -> Vector2:
 
 
 ## Есть ли прямая простреливаемая линия от a до b (стены не мешают только навесным атакам).
-func has_line_of_fire(a: Vector2, b: Vector2) -> bool:
+## margin > 0 — проверить ещё две параллельные линии по бокам (с запасом на толщину снаряда).
+func has_line_of_fire(a: Vector2, b: Vector2, margin: float = 0.0) -> bool:
+	if margin > 0.0:
+		var side := (b - a).orthogonal().normalized() * margin
+		return (
+			has_line_of_fire(a, b) and has_line_of_fire(a + side, b + side)
+			and has_line_of_fire(a - side, b - side)
+		)
 	var d := a.distance_to(b)
-	var steps := maxi(1, ceili(d / 0.25))
+	var steps := maxi(1, ceili(d / 0.1))
 	for i in range(1, steps):
 		if blocks_projectiles(tile_at(a.lerp(b, float(i) / steps))):
 			return false

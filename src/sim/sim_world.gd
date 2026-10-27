@@ -17,6 +17,8 @@ var projectiles: Array[SimProjectile] = []
 var events: Array[Dictionary] = []
 ## Режимы без возрождения (например «Выживание») ставят false.
 var respawn_enabled: bool = true
+## Режим матча (счёт, таймер, победа). null — свободная игра без конца (тесты, отладка).
+var mode: GameMode
 
 var _inputs: Dictionary = {}
 var _by_id: Dictionary = {}
@@ -75,6 +77,8 @@ func set_input(brawler_id: int, cmd: InputCommand) -> void:
 
 
 func step() -> void:
+	if mode != null and not mode.accepts_input():
+		_inputs.clear()
 	for b in brawlers:
 		_apply_input(b, _inputs.get(b.id) as InputCommand)
 	for b in brawlers:
@@ -84,6 +88,8 @@ func step() -> void:
 	for b in brawlers:
 		_update_timers(b)
 	_update_regrow()
+	if mode != null:
+		mode.tick(self)
 	_inputs.clear()
 	tick += 1
 
@@ -383,6 +389,8 @@ func _kill(target: SimBrawler, killer: SimBrawler) -> void:
 	if respawn_enabled:
 		target.respawn_at_tick = tick + secs(balance.respawn_time)
 	emit(SimEvents.DEATH, {"target": target.id, "killer": killer.id if killer else 0, "pos": target.pos})
+	if mode != null:
+		mode.on_kill(self, target, killer)
 
 
 func _pick_spawn(team: int) -> Vector2:

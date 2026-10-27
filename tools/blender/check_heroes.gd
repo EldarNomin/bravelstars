@@ -3,6 +3,13 @@ extends SceneTree
 
 const HEROES := ["lynx", "anvil", "shishka"]
 const BONES := ["root", "spine", "head_bone", "arm.L", "arm.R", "leg.L", "leg.R"]
+const CLIPS := {
+	"idle": [1.2, 1.5, true, "spine"],
+	"run": [0.6, 0.8, true, "leg.L"],
+	"attack": [0.25, 0.35, false, "arm.R"],
+	"super": [0.4, 0.6, false, "spine"],
+	"death": [0.6, 0.8, false, "root"],
+}
 
 
 func _initialize() -> void:
@@ -44,24 +51,36 @@ func _check_heroes() -> void:
 		if muzzle.global_position.y > 0.9 or muzzle.global_position.z >= 0.0:
 			_fail(hero_name, "muzzle must face forward at 0.7–0.9 m")
 			return
-		if not player.has_animation("idle"):
-			_fail(hero_name, "missing idle")
-			return
-		var animation := player.get_animation("idle")
-		if animation.loop_mode != Animation.LOOP_LINEAR or absf(animation.length - 1.5) > 0.01:
-			_fail(hero_name, "idle must loop and last 1.5 s")
-			return
-		player.play("idle")
-		player.advance(0.0)
-		var spine := skeleton.find_bone("spine")
-		var initial := skeleton.get_bone_pose_rotation(spine)
-		player.advance(0.75)
-		if initial.is_equal_approx(skeleton.get_bone_pose_rotation(spine)):
-			_fail(hero_name, "idle does not move the spine")
+		if not _check_clips(hero_name, player, skeleton):
 			return
 		instance.free()
-		print("GODOT_HERO ", hero_name, " skeleton, sockets and idle OK")
+		print("GODOT_HERO ", hero_name, " skeleton, sockets and five clips OK")
 	quit(0)
+
+
+func _check_clips(hero_name: String, player: AnimationPlayer, skeleton: Skeleton3D) -> bool:
+	for clip in CLIPS:
+		if not player.has_animation(clip):
+			_fail(hero_name, "missing animation " + clip)
+			return false
+		var animation := player.get_animation(clip)
+		var rule: Array = CLIPS[clip]
+		if animation.length < rule[0] - 0.001 or animation.length > rule[1] + 0.001:
+			_fail(hero_name, "wrong duration for " + clip)
+			return false
+		var loop_mode := Animation.LOOP_LINEAR if rule[2] else Animation.LOOP_NONE
+		if animation.loop_mode != loop_mode:
+			_fail(hero_name, "wrong loop mode for " + clip)
+			return false
+		player.play(clip)
+		player.advance(0.0)
+		var bone := skeleton.find_bone(rule[3])
+		var initial := skeleton.get_bone_pose_rotation(bone)
+		player.advance(animation.length * 0.5)
+		if initial.is_equal_approx(skeleton.get_bone_pose_rotation(bone)):
+			_fail(hero_name, clip + " does not animate " + rule[3])
+			return false
+	return true
 
 
 func _fail(hero_name: String, reason: String) -> void:

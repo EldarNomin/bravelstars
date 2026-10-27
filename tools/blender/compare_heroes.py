@@ -11,6 +11,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 from build_heroes import BONES, HEROES  # noqa: E402
 from common import reset_scene  # noqa: E402
 from verify_heroes import validate  # noqa: E402
+from hero_animations import FRAMES  # noqa: E402
 
 
 def snapshot(path, name):
@@ -31,19 +32,22 @@ def snapshot(path, name):
         "faces": [(list(face.vertices), mesh.data.materials[face.material_index].name)
                   for face in mesh.data.polygons],
         "materials": materials,
-        "frames": [],
+        "frames": {},
     }
-    for frame in (0, 9, 18, 27, 36):
-        bpy.context.scene.frame_set(frame)
-        bpy.context.view_layer.update()
-        evaluated = mesh.evaluated_get(bpy.context.evaluated_depsgraph_get())
-        points = [list(evaluated.matrix_world @ v.co) for v in evaluated.to_mesh().vertices]
-        evaluated.to_mesh_clear()
-        result["frames"].append({
-            "vertices": points,
-            "sockets": {socket: list(bpy.data.objects[socket].matrix_world.translation)
-                        for socket in ("head", "muzzle")},
-        })
+    for clip, duration in FRAMES.items():
+        rig.animation_data.action = bpy.data.actions[clip]
+        result["frames"][clip] = []
+        for frame in (0, duration // 3, 2 * duration // 3, duration):
+            bpy.context.scene.frame_set(frame)
+            bpy.context.view_layer.update()
+            evaluated = mesh.evaluated_get(bpy.context.evaluated_depsgraph_get())
+            points = [list(evaluated.matrix_world @ v.co) for v in evaluated.to_mesh().vertices]
+            evaluated.to_mesh_clear()
+            result["frames"][clip].append({
+                "vertices": points,
+                "sockets": {socket: list(bpy.data.objects[socket].matrix_world.translation)
+                            for socket in ("head", "muzzle")},
+            })
     return result
 
 

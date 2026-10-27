@@ -11,6 +11,7 @@ from mathutils import Matrix, Vector
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 from common import box, material, reset_scene  # noqa: E402
+from hero_animations import add_animations  # noqa: E402
 
 ROOT = SCRIPT_DIR.parent.parent
 HEROES = ("lynx", "anvil", "shishka")
@@ -187,23 +188,6 @@ def marker(rig, name, location, bone):
     return empty
 
 
-def add_idle(rig):
-    scene = bpy.context.scene
-    scene.render.fps = 24
-    scene.frame_start, scene.frame_end = 0, 36
-    rig.animation_data_create()
-    rig.animation_data.action = bpy.data.actions.new("idle")
-    for frame, breath in ((0, 0.0), (18, 1.0), (36, 0.0)):
-        for bone, axis, amount in (("spine", 0, 2.0), ("head_bone", 0, -1.0), ("arm.R", 1, 1.5)):
-            pose = rig.pose.bones[bone]
-            pose.rotation_mode = "XYZ"
-            pose.rotation_euler[axis] = math.radians(amount * breath)
-            pose.keyframe_insert(data_path="rotation_euler", frame=frame, group=bone)
-    for curve in rig.animation_data.action.fcurves:
-        curve.modifiers.new(type="CYCLES")
-    scene.frame_set(0)
-
-
 def build_hero(name, destination):
     reset_scene()
     rig = armature()
@@ -222,14 +206,14 @@ def build_hero(name, destination):
     modifier.object = rig
     marker(rig, "muzzle", muzzle, "arm.R")
     marker(rig, "head", (0, 0, head_height), "head_bone")
-    add_idle(rig)
+    add_animations(rig, name)
     bpy.ops.object.select_all(action="SELECT")
     destination.mkdir(parents=True, exist_ok=True)
     bpy.ops.export_scene.gltf(
         filepath=str(destination / f"{name}.glb"), export_format="GLB", use_selection=True,
-        export_yup=True, export_animations=True, export_animation_mode="ACTIONS", export_frame_range=True,
+        export_yup=True, export_animations=True, export_animation_mode="ACTIONS", export_frame_range=False,
     )
-    print(f"Built {name} with skeleton and idle")
+    print(f"Built {name} with skeleton and five animations")
 
 
 def main():

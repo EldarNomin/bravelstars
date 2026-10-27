@@ -19,6 +19,8 @@ var map_name: String = ""
 var width: int = 0
 var height: int = 0
 var tiles: PackedByteArray = PackedByteArray()
+## Растёт при каждом изменении клеток — чтобы боты знали, когда перестроить навигацию.
+var version: int = 0
 ## Команда (0..8) -> Array[Vector2] точек появления. Символы '1'..'9'.
 var spawns: Dictionary = {}
 ## Остальные буквы (например 'G' — шахта кристаллов) -> Array[Vector2]. Клетка под ними — пол.
@@ -102,6 +104,7 @@ func get_tile(x: int, y: int) -> int:
 func set_tile(x: int, y: int, t: int) -> void:
 	if in_bounds(x, y):
 		tiles[y * width + x] = t
+		version += 1
 
 
 func cell_of(pos: Vector2) -> Vector2i:
@@ -158,6 +161,16 @@ func _push_out_of_cell(p: Vector2, x: int, y: int, radius: float) -> Vector2:
 	if m == top:
 		return Vector2(p.x, y - radius)
 	return Vector2(p.x, y + 1 + radius)
+
+
+## Есть ли прямая простреливаемая линия от a до b (стены не мешают только навесным атакам).
+func has_line_of_fire(a: Vector2, b: Vector2) -> bool:
+	var d := a.distance_to(b)
+	var steps := maxi(1, ceili(d / 0.25))
+	for i in range(1, steps):
+		if blocks_projectiles(tile_at(a.lerp(b, float(i) / steps))):
+			return false
+	return true
 
 
 func to_lines() -> PackedStringArray:

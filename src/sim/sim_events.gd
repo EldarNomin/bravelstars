@@ -22,5 +22,11 @@ const TILE_DESTROYED: StringName = &"tile_destroyed"
 const TILE_RESTORED: StringName = &"tile_restored"
 ## projectile, pos
 const PROJECTILE_END: StringName = &"projectile_end"
+## (без полей) — отсчёт закончился, бой начался
+const MATCH_START: StringName = &"match_start"
+## scores: Dictionary команда -> очки
+const SCORE: StringName = &"score"
+## winner: команда (-1 — ничья), scores, reason: "score" | "time"
+const MATCH_END: StringName = &"match_end"
 ## brawler, dir
 const DASH_START: StringName = &"dash_start"

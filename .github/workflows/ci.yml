@@ -6,6 +6,40 @@ on:
   workflow_dispatch:
 
 jobs:
+  models:
+    name: Blender environment models
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - name: Установить Blender 4.5.15 LTS
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          base="https://download.blender.org/release/Blender4.5"
+          archive="blender-4.5.15-linux-x64.tar.xz"
+          curl --fail --location --retry 3 --silent --show-error -O "$base/$archive"
+          curl --fail --location --retry 3 --silent --show-error -O "$base/blender-4.5.15.sha256"
+          grep " $archive$" blender-4.5.15.sha256 | sha256sum --check --strict
+          tar -xf "$archive"
+          echo "$RUNNER_TEMP/blender-4.5.15-linux-x64" >> "$GITHUB_PATH"
+      - name: Пересобрать и проверить GLB
+        run: |
+          set -euo pipefail
+          blender -b --python-exit-code 1 -P tools/blender/test_validation.py
+          blender -b --python-exit-code 1 -P tools/blender/build_all.py -- --output-dir "$RUNNER_TEMP/a01-models"
+          blender -b --python-exit-code 1 -P tools/blender/verify_all.py -- --input-dir "$RUNNER_TEMP/a01-models"
+          for model in "$RUNNER_TEMP"/a01-models/*.glb; do
+            cmp "$model" "assets/models/env/$(basename "$model")"
+          done
+      - name: Проверить импорт в Godot
+        run: |
+          set -euo pipefail
+          tools/ci_install_godot.sh
+          ~/godot/godot --headless --editor --import
+          ~/godot/godot --headless -s tools/blender/check_godot.gd
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -18,12 +52,18 @@ jobs:
           key: godot-${{ hashFiles('.godot-version') }}
       - name: Установить Godot
         run: tools/ci_install_godot.sh
+      - name: Бенчмарк симуляции (10000 тиков)
+        run: |
+          ~/godot/godot --headless --editor --import
+          ~/godot/godot --headless --scene res://scenes/bench/bench.tscn -- --bench-sim
       - name: gdlint
         run: |
           pip install "gdtoolkit==4.*"
           gdlint src tests tools
       - name: Тесты
-        run: tools/run_tests.sh ~/godot/godot
+        run: |
+          bash tests/tools/test_run_tests.sh
+          tools/run_tests.sh ~/godot/godot
 
   android:
     needs: test
@@ -48,7 +88,7 @@ jobs:
         run: |
           keytool -genkeypair -v -keystore ~/debug.keystore -storepass android -keypass android \
             -alias androiddebugkey -dname "CN=Android Debug,O=Android,C=US" -keyalg RSA -keysize 2048 -validity 10000
-          ~/godot/godot --headless --editor --quit >/dev/null 2>&1 || true
+          ~/godot/godot --headless --editor --quit
           SETTINGS=$(ls ~/.config/godot/editor_settings-*.tres)
           sed -i '/^export\/android\//d' "$SETTINGS"
           {
@@ -61,7 +101,7 @@ jobs:
       - name: Экспорт debug APK
         run: |
           mkdir -p build
-          ~/godot/godot --headless --import >/dev/null 2>&1 || true
+          ~/godot/godot --headless --import
           ~/godot/godot --headless --export-debug "Android" build/bravelstars-debug.apk
           ls -la build
           test -s build/bravelstars-debug.apk
@@ -69,4 +109,35 @@ jobs:
         with:
           name: bravelstars-debug-apk
           path: build/bravelstars-debug.apk
+          retention-days: 14
+      - name: Экспорт отдельного APK бенчмарка
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          preset = Path('export_presets.cfg')
+          text = preset.read_text(encoding='utf-8')
+          old_package = 'package/unique_name="com.eldarnomin.bravelstars"'
+          assert old_package in text and 'tools/*, ' in text
+          text = text.replace(old_package, 'package/unique_name="com.eldarnomin.bravelstars.bench"')
+          text = text.replace('tools/*, ', '')
+          text = text.replace('[preset.0.options]', '[preset.0.options]\n'
+              'command_line/extra_args="--scene res://scenes/bench/bench.tscn"', 1)
+          preset.write_text(text, encoding='utf-8')
+          PY
+          ~/godot/godot --headless --export-debug "Android" build/bravelstars-bench.apk
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          with ZipFile('build/bravelstars-bench.apk') as apk:
+              names = apk.namelist()
+              assert apk.testzip() is None
+              assert 'assets/data/maps/_debug_arena.json' in names
+              assert 'assets/tools/bench/bench.gdc' in names
+              assert 'assets/tools/bench/bench_workload.gdc' in names
+              assert 'lib/arm64-v8a/libgodot_android.so' in names
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bravelstars-benchmark-apk
+          path: build/bravelstars-bench.apk
+          if-no-files-found: error
           retention-days: 14

@@ -18,7 +18,8 @@
 | Папка | Владелец |
 |---|---|
 | `src/core/`, `src/sim/`, `src/net/`, `src/modes/` (каркас), `src/ai/` (каркас), `project.godot` | Claude |
-| `src/view/`, `src/ui/`, `assets/`, `scenes/ui/` | Antigravity |
+| `src/view/`, `src/ui/`, `scenes/ui/`, `assets/ui/`, `assets/vfx/`, `assets/textures/` | Antigravity |
+| `assets/models/` (3D-модели, анимации), `tools/blender/` (скрипты генерации и экспорта моделей) | Codex |
 | `data/` (герои, карты, баланс), `src/sim/supers/`, `tests/sim/brawlers/`, `src/ai/roles/` (тюнинг), `locale/` | GLM |
 | `.github/`, `tests/`, `tools/`, `server/`, `export_presets.cfg`, `src/meta/backend/` | Codex |
 | `docs/` | все, но `PLAN.md` меняет только Claude |

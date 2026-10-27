@@ -1,0 +1,107 @@
+name: Godot CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: godot-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Lint and GUT
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: ./.github/actions/setup-godot
+      - name: Lint project scripts
+        run: |
+          python -m pip install 'gdtoolkit==4.*'
+          gdlint src tests tools
+      - name: Run simulation tests
+        run: bash tools/run_tests.sh
+
+  android:
+    name: Debug APK
+    needs: tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: ./.github/actions/setup-godot
+        with:
+          export-templates: 'true'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Prepare Android SDK and debug signing
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            'platform-tools' 'platforms;android-35' 'build-tools;35.0.1'
+          keytool -genkeypair -keystore "$RUNNER_TEMP/debug.keystore" \
+            -storepass android -keypass android -alias androiddebugkey \
+            -dname 'CN=Android Debug,O=Android,C=US' -keyalg RSA -keysize 2048 -validity 10000
+          version="$(tr -d '\r\n' < .godot-version)"
+          minor="${version%.*}"
+          mkdir -p "$HOME/.config/godot"
+          cat > "$HOME/.config/godot/editor_settings-${minor}.tres" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          EOF
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$RUNNER_TEMP/debug.keystore" >> "$GITHUB_ENV"
+      - name: Export and verify APK
+        env:
+          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          godot --headless --editor --import
+          godot --headless --export-debug Android build/bravelstars-debug.apk
+          test -s build/bravelstars-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.1/apksigner" verify build/bravelstars-debug.apk
+          # aapt badging rejects Godot's string-encoded uses-feature/required values.
+          analyzer="$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer"
+          "$analyzer" manifest print build/bravelstars-debug.apk > build/AndroidManifest.xml
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          import zipfile
+          manifest = ET.parse('build/AndroidManifest.xml').getroot()
+          assert manifest.get('package') == 'org.bravelstars.prototype'
+          android = '{http://schemas.android.com/apk/res/android}'
+          activity = manifest.find('application/activity')
+          orientation = activity.get(android + 'screenOrientation')
+          # Godot 4.7 maps SCREEN_SENSOR_LANDSCAPE to Android userLandscape (11).
+          assert orientation in ('userLandscape', '11'), orientation
+          with zipfile.ZipFile('build/bravelstars-debug.apk') as apk:
+              names = apk.namelist()
+              assert apk.testzip() is None
+              assert 'lib/arm64-v8a/libgodot_android.so' in names
+              assert 'assets/data/maps/_debug_arena.json' in names, 'Missing map JSON'
+              assert not any(n.startswith(('assets/tests/', 'assets/addons/gut/')) for n in names)
+          print('APK verified: arm64, landscape, map JSON, no test resources')
+          PY
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: bravelstars-debug-apk
+          path: build/bravelstars-debug.apk
+          if-no-files-found: error
+          retention-days: 14

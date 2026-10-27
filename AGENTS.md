@@ -1,12 +1,13 @@
 # Правила для агентов (Claude, Codex, Antigravity, GLM)
 
-Читать перед любой задачей: `docs/PLAN.md` (что и зачем) и `docs/TASKS.md` (кто что делает).
+Читать перед любой задачей: `docs/PLAN.md` (что и зачем), `docs/DESIGN.md` (какую игру делаем), `docs/TASKS.md` (кто что делает), `docs/studio/PROCESS.md` (как работает студия).
 
 ## Как брать задачу
 
 1. Берёшь только задачу, где в колонке «Агент» указан ты, и все задачи из «После» готовы.
 2. Ветка: `<агент>/<ID>-кратко`, например `codex/F-03-ci`, `glm/C-09-brawlers`.
-3. Одна задача = один PR в `main`. В заголовке PR — ID задачи. В PR меняешь статус задачи в `docs/TASKS.md` на `review`.
+3. Одна задача = один PR в `main`, до ~400 строк кода. В заголовке PR — ID задачи. Перед PR — ребейз на свежий `main`.
+   `docs/TASKS.md` и `project.godot` в PR **не трогать** — статусы и настройки проекта ведёт Claude.
 4. Ревью всех PR делает Claude. Сам в `main` не мержишь.
 5. Не понятно или задача требует выйти за свои папки — пиши вопрос в PR, а не угадывай.
 
@@ -16,9 +17,9 @@
 
 | Папка | Владелец |
 |---|---|
-| `src/core/`, `src/sim/`, `src/net/`, `src/modes/` (каркас) | Claude |
+| `src/core/`, `src/sim/`, `src/net/`, `src/modes/` (каркас), `src/ai/` (каркас), `project.godot` | Claude |
 | `src/view/`, `src/ui/`, `assets/`, `scenes/ui/` | Antigravity |
-| `data/` (герои, карты, баланс), `src/ai/`, `src/modes/showdown/`, `locale/` | GLM |
+| `data/` (герои, карты, баланс), `src/sim/supers/`, `tests/sim/brawlers/`, `src/ai/roles/` (тюнинг), `locale/` | GLM |
 | `.github/`, `tests/`, `tools/`, `server/`, `export_presets.cfg`, `src/meta/backend/` | Codex |
 | `docs/` | все, но `PLAN.md` меняет только Claude |
 
@@ -49,6 +50,9 @@ docs/
 
 - В `src/sim` никаких `Input.*`, `randf()` без общего seed, `Time.get_ticks_*`, `_process`. Только шаг тика.
 - Случайность — через общий RNG симуляции с seed.
+- Ресурсы `BrawlerData`/`AttackData` в симуляции только читаются — они общие для всех копий героя.
+- События — только `world.emit(SimEvents.<ТИП>, {...})`; отображение забирает их через `world.drain_events()`.
+- Состояние суперов сбрасывается в `SuperAbility.reset()`.
 
 ## Стиль кода
 

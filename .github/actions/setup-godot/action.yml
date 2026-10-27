@@ -1,0 +1,35 @@
+name: Set up Godot
+description: Install the editor and optional export templates from the pinned official release.
+inputs:
+  export-templates:
+    description: Install export templates
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Download Godot
+      shell: bash
+      run: |
+        set -euo pipefail
+        release="$(tr -d '\r\n' < .godot-version)"
+        version="${release%-stable}"
+        download="$RUNNER_TEMP/godot"
+        mkdir -p "$download" "$HOME/.local/bin"
+        cd "$download"
+        base="https://github.com/godotengine/godot-builds/releases/download/$release"
+        editor="Godot_v${release}_linux.x86_64.zip"
+        curl --fail --location --retry 3 -O "$base/$editor"
+        curl --fail --location --retry 3 -O "$base/SHA512-SUMS.txt"
+        grep " $editor$" SHA512-SUMS.txt | sha512sum --check --strict
+        unzip -q "$editor"
+        install -m 755 "Godot_v${release}_linux.x86_64" "$HOME/.local/bin/godot"
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        if [[ '${{ inputs.export-templates }}' == 'true' ]]; then
+          templates="Godot_v${release}_export_templates.tpz"
+          curl --fail --location --retry 3 -O "$base/$templates"
+          grep " $templates$" SHA512-SUMS.txt | sha512sum --check --strict
+          unzip -q "$templates"
+          destination="$HOME/.local/share/godot/export_templates/${version}.stable"
+          mkdir -p "$destination"
+          mv templates/* "$destination/"
+        fi

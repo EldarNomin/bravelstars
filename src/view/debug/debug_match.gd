@@ -37,16 +37,25 @@ var _pending_attack: bool = false
 var _pending_auto: bool = false
 var _pending_super: bool = false
 var _dummy_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+var _touch_controls: TouchControls
+var _aim_indicator: MeshInstance3D
 
 @onready var _camera: Camera3D = $Camera3D
 @onready var _hud: Label = $HUD/Info
 
 
 func _ready() -> void:
+	_touch_controls = TouchControls.new()
+	_touch_controls.camera = _camera
+	_touch_controls.aim_updated.connect(_on_touch_aim_updated)
+	_touch_controls.aim_ended.connect(_on_touch_aim_ended)
+	$HUD.add_child(_touch_controls)
 	_start()
 
 
 func _start() -> void:
+	if _aim_indicator != null:
+		_aim_indicator.visible = false
 	for n in _tile_nodes.values() + _brawler_nodes.values() + _projectile_nodes.values():
 		n.queue_free()
 	_tile_nodes.clear()
@@ -98,6 +107,18 @@ func _sim_tick() -> void:
 	_pending_attack = false
 	_pending_auto = false
 	_pending_super = false
+
+	if _touch_controls != null and player != null:
+		var touch_cmd := _touch_controls.build_command(player)
+		if touch_cmd.move != Vector2.ZERO:
+			cmd.move = touch_cmd.move
+		if touch_cmd.attack:
+			cmd.attack = true
+			cmd.attack_aim = touch_cmd.attack_aim
+		if touch_cmd.use_super:
+			cmd.use_super = true
+			cmd.super_aim = touch_cmd.super_aim
+
 	world.set_input(player.id, cmd)
 	_drive_dummies()
 	world.step()
@@ -116,6 +137,35 @@ func _drive_dummies() -> void:
 		cmd.attack = _dummy_rng.randf() < DUMMY_FIRE_CHANCE
 		cmd.use_super = b.super_ready()
 		world.set_input(b.id, cmd)
+
+
+func _on_touch_aim_updated(
+	_action: StringName,
+	aim_dir: Vector2,
+	range_tiles: float,
+	is_auto: bool
+) -> void:
+	if is_auto or aim_dir.is_zero_approx() or player == null or not player.alive:
+		if _aim_indicator != null:
+			_aim_indicator.visible = false
+		return
+	if _aim_indicator == null:
+		_aim_indicator = MeshInstance3D.new()
+		var box := BoxMesh.new()
+		_aim_indicator.mesh = box
+		_aim_indicator.material_override = _material(Color(1.0, 0.85, 0.2), true)
+		add_child(_aim_indicator)
+	_aim_indicator.visible = true
+	var box_mesh := _aim_indicator.mesh as BoxMesh
+	box_mesh.size = Vector3(0.2, 0.05, range_tiles)
+	var mid := player.pos + aim_dir * (range_tiles * 0.5)
+	_aim_indicator.position = Vector3(mid.x, 0.05, mid.y)
+	_aim_indicator.rotation = Vector3(0.0, atan2(aim_dir.x, aim_dir.y), 0.0)
+
+
+func _on_touch_aim_ended(_action: StringName) -> void:
+	if _aim_indicator != null:
+		_aim_indicator.visible = false
 
 
 func _render(alpha: float) -> void:

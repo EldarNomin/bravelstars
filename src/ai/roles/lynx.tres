@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="BotProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ai/bot_profile.gd" id="1_prof"]
+
+[resource]
+script = ExtResource("1_prof")
+skill = 0.85
+preferred_range = 0.88
+retreat_hp = 0.55
+reaction_ticks = 4
+bush_preference = 0.3
+memory_time = 3.0

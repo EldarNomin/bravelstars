@@ -112,7 +112,7 @@ func test_death_and_respawn() -> void:
 	assert_false(enemy.alive)
 	assert_eq(me.kills, 1)
 	assert_eq(enemy.deaths, 1)
-	SimFixtures.run(w, SimConstants.ticks(SimConstants.RESPAWN_TIME))
+	SimFixtures.run(w, w.secs(w.balance.respawn_time))
 	assert_true(enemy.alive)
 	assert_eq(enemy.hp, 3000)
 	assert_eq(enemy.pos, enemy.spawn_pos)
@@ -129,10 +129,10 @@ func test_no_respawn_when_disabled() -> void:
 func test_regen_after_delay() -> void:
 	enemy.hp = 1000
 	enemy.last_damage_tick = w.tick
-	SimFixtures.run(w, SimConstants.ticks(SimConstants.REGEN_DELAY))
+	SimFixtures.run(w, w.secs(w.balance.regen_delay))
 	assert_eq(enemy.hp, 1000)
-	SimFixtures.run(w, 1)
-	assert_eq(enemy.hp, 1000 + ceili(3000 * SimConstants.REGEN_PERCENT))
+	SimFixtures.run(w, SimConstants.TICK_RATE)
+	assert_almost_eq(enemy.hp, 1000 + roundi(3000 * w.balance.regen_percent_per_sec), 2, "за секунду ~13%")
 
 
 func test_knockback_and_stun() -> void:
@@ -165,7 +165,7 @@ func test_dash_stops_on_death() -> void:
 	me.ability = me.data.create_super_ability()
 	_use_super(Vector2.UP)
 	w.damage(me, 99999, enemy, null, false, enemy.pos)
-	SimFixtures.run(w, SimConstants.ticks(SimConstants.RESPAWN_TIME) + 10)
+	SimFixtures.run(w, w.secs(w.balance.respawn_time) + 10)
 	assert_true(me.alive)
 	assert_eq(me.pos, me.spawn_pos, "после возрождения рывок не продолжается")
 	assert_false(me.ability.blocks_input())
@@ -241,7 +241,7 @@ func test_events_survive_multiple_ticks() -> void:
 func test_regen_resets_on_attack() -> void:
 	me.hp = 1000
 	me.last_damage_tick = w.tick
-	SimFixtures.run(w, SimConstants.ticks(SimConstants.REGEN_DELAY) - 5)
+	SimFixtures.run(w, w.secs(w.balance.regen_delay) - 5)
 	_shoot(Vector2.UP)
 	SimFixtures.run(w, 10)
 	assert_eq(me.hp, 1000, "выстрел сбросил таймер регена")

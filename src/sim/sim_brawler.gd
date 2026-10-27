@@ -24,6 +24,11 @@ var last_damage_tick: int = -100000
 var last_attack_tick: int = -100000
 var reveal_until_tick: int = -1
 var respawn_at_tick: int = -1
+## Неуязвим до этого тика (защита после возрождения).
+var shield_until_tick: int = -1
+var knock_step: Vector2 = Vector2.ZERO
+var knock_ticks: int = 0
+var regen_milli: int = 0
 
 var kills: int = 0
 var deaths: int = 0
@@ -49,8 +54,14 @@ func reset_at(p: Vector2) -> void:
 	cooldown_ticks = 0
 	stun_ticks = 0
 	respawn_at_tick = -1
+	knock_ticks = 0
+	regen_milli = 0
 	if ability != null:
 		ability.reset()
+
+
+func has_shield(now: int) -> bool:
+	return now < shield_until_tick
 
 
 func is_stunned() -> bool:
@@ -78,6 +89,10 @@ func to_dict() -> Dictionary:
 		"reload": reload_progress,
 		"super": super_charge,
 		"stun": stun_ticks,
+		"cooldown": cooldown_ticks,
+		"shield": shield_until_tick,
+		"knock": knock_ticks,
+		"reveal": reveal_until_tick,
 		"kills": kills,
 		"deaths": deaths,
 		"mode": mode_data,

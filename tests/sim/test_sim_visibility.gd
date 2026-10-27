@@ -31,7 +31,7 @@ func test_revealed_after_shooting() -> void:
 	w.set_input(hider.id, InputCommand.create(Vector2.ZERO, true, Vector2.LEFT))
 	w.step()
 	assert_true(w.is_visible_to(0, hider))
-	SimFixtures.run(w, SimConstants.ticks(SimConstants.REVEAL_AFTER_ACTION))
+	SimFixtures.run(w, w.secs(w.balance.reveal_after_attack))
 	assert_false(w.is_visible_to(0, hider))
 
 

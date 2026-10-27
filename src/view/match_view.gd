@@ -10,8 +10,9 @@ const HERO_LYNX: String = "res://data/brawlers/lynx.tres"
 const HERO_ANVIL: String = "res://data/brawlers/anvil.tres"
 const HERO_SHISHKA: String = "res://data/brawlers/shishka.tres"
 
-const CAMERA_HEIGHT: float = 16.5
-const CAMERA_Z_OFFSET: float = 11.55  ## height / tan(55°)
+const CAMERA_HEIGHT: float = 18.0
+const CAMERA_Z_OFFSET: float = 12.60  ## height / tan(55°)
+const CAMERA_FOV: float = 52.0
 const CAMERA_LERP_SPEED: float = 8.0
 
 @export var map_path: String = "res://data/maps/sawmill.json"
@@ -80,10 +81,10 @@ func _setup_environment() -> void:
 func _setup_camera() -> void:
 	_camera = Camera3D.new()
 	_camera.name = "Camera3D"
-	_camera.fov = 48.0
-	_camera.position = Vector3(16.0, CAMERA_HEIGHT, 10.0 + CAMERA_Z_OFFSET)
+	_camera.fov = CAMERA_FOV
+	_camera.position = Vector3(16.5, CAMERA_HEIGHT, 9.5 + CAMERA_Z_OFFSET)
 	add_child(_camera)
-	_camera.look_at(Vector3(16.0, 0.0, 10.0))
+	_camera.look_at(Vector3(16.5, 0.0, 9.5))
 
 
 func _setup_ui() -> void:
@@ -97,7 +98,11 @@ func _setup_ui() -> void:
 	_touch_controls.aim_ended.connect(_on_touch_aim_ended)
 	canvas.add_child(_touch_controls)
 
-	_hud = MatchHUD.new()
+	var hud_scene: PackedScene = load("res://scenes/ui/hud.tscn")
+	if hud_scene != null:
+		_hud = hud_scene.instantiate() as MatchHUD
+	else:
+		_hud = MatchHUD.new()
 	_hud.restart_requested.connect(start_match)
 	canvas.add_child(_hud)
 
@@ -133,15 +138,15 @@ func _setup_aim_indicators() -> void:
 
 func start_match() -> void:
 	# Очистка предыдущего состояния
-	for v in _brawler_views.values():
-		(v as Node).queue_free()
+	for v: Node in _brawler_views.values():
+		v.queue_free()
 	_brawler_views.clear()
 
-	for p in _projectile_views.values():
-		(p as Node).queue_free()
+	for p: Node in _projectile_views.values():
+		p.queue_free()
 	_projectile_views.clear()
 
-	for s in _shard_nodes:
+	for s: Node in _shard_nodes:
 		s.queue_free()
 	_shard_nodes.clear()
 
@@ -196,16 +201,16 @@ func start_match() -> void:
 	bot_team.add(enemy_3, null, 23)
 
 	# 7. Создание визуальных представлений героев
-	for b in world.brawlers:
+	for b: SimBrawler in world.brawlers:
 		var bv := BrawlerView.new(b, b == player)
 		add_child(bv)
 		_brawler_views[b.id] = bv
 		_prev_brawler_pos[b.id] = b.pos
 
-	# Мгновенная центровка камеры на игроке
-	var target_cam := Vector3(player.pos.x, CAMERA_HEIGHT, player.pos.y + CAMERA_Z_OFFSET)
-	_camera.position = target_cam
-	_camera.look_at(Vector3(player.pos.x, 0.0, player.pos.y))
+	# Мгновенная центровка камеры с учётом границ карты
+	var cam_target := _get_clamped_camera_target()
+	_camera.position = Vector3(cam_target.x, CAMERA_HEIGHT, cam_target.z + CAMERA_Z_OFFSET)
+	_camera.look_at(cam_target)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -215,8 +220,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		_pending_auto = true
 	if event.is_action_pressed("use_super"):
 		_pending_super = true
-	if event is InputEventKey and event.pressed and event.physical_keycode == KEY_R:
-		start_match()
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.physical_keycode == KEY_M:
+			# Переключение между картой Лесопилка (TeamFight) и _debug_heist (Добыча)
+			if map_path == "res://data/maps/sawmill.json":
+				map_path = "res://data/maps/_debug_heist.json"
+			else:
+				map_path = "res://data/maps/sawmill.json"
+			start_match()
+		elif event.physical_keycode == KEY_R:
+			start_match()
 
 
 func _process(delta: float) -> void:
@@ -231,10 +244,10 @@ func _process(delta: float) -> void:
 
 func _sim_tick() -> void:
 	# 1. Сохраняем предыдущие позиции для интерполяции
-	for b in world.brawlers:
+	for b: SimBrawler in world.brawlers:
 		_prev_brawler_pos[b.id] = b.pos
 
-	for pr in world.projectiles:
+	for pr: SimProjectile in world.projectiles:
 		_prev_proj_pos[pr.id] = pr.pos
 
 	# 2. Ввод локального игрока (джойстики + клавиатура/мышь)
@@ -280,7 +293,7 @@ func _sim_tick() -> void:
 	world.step()
 
 	# 5. Обработка событий симуляции
-	for e in world.drain_events():
+	for e: Dictionary in world.drain_events():
 		_handle_sim_event(e)
 
 
@@ -297,22 +310,47 @@ func _handle_sim_event(e: Dictionary) -> void:
 			var tile: int = e.get("tile", 0)
 			if _map_view != null:
 				_map_view.on_tile_restored(cell, tile)
+		SimEvents.ATTACK:
+			var bid: int = e.get("brawler", 0)
+			var bv: BrawlerView = _brawler_views.get(bid)
+			if bv != null:
+				bv.play_action(&"attack")
+		SimEvents.SUPER:
+			var bid: int = e.get("brawler", 0)
+			var bv: BrawlerView = _brawler_views.get(bid)
+			if bv != null:
+				bv.play_action(&"super")
+		SimEvents.DEATH:
+			var bid: int = e.get("target", 0)
+			var bv: BrawlerView = _brawler_views.get(bid)
+			if bv != null:
+				bv.on_death()
+		SimEvents.RESPAWN:
+			var bid: int = e.get("brawler", 0)
+			var bv: BrawlerView = _brawler_views.get(bid)
+			if bv != null:
+				bv.on_respawn()
 
 
 func _render(alpha: float, delta: float) -> void:
+	if world == null:
+		return
+
 	# 1. Интерполяция позиций героев
-	for b in world.brawlers:
+	for b: SimBrawler in world.brawlers:
 		var bv: BrawlerView = _brawler_views.get(b.id)
 		if bv == null:
 			continue
 		var prev_p: Vector2 = _prev_brawler_pos.get(b.id, b.pos)
 		var p: Vector2 = prev_p.lerp(b.pos, alpha)
-		bv.update_transform_interpolated(p, b.facing)
+		bv.update_transform_interpolated(p, b.facing, delta)
 		bv.update_state(b, world, player.team)
+		var is_moving: bool = (b.pos - prev_p).length_squared() > 0.0001
+		bv.update_locomotion(is_moving)
 
 	# 2. Интерполяция снарядов
 	var active_proj_ids: Dictionary = {}
-	for pr in world.projectiles:
+	for pr: SimProjectile in world.projectiles:
 		active_proj_ids[pr.id] = true
 		var node: Node3D = _projectile_views.get(pr.id)
 		if node == null:
@@ -322,10 +360,10 @@ func _render(alpha: float, delta: float) -> void:
 		var prev_p: Vector2 = _prev_proj_pos.get(pr.id, pr.pos)
 		var p: Vector2 = prev_p.lerp(pr.pos, alpha)
 
-		var h: float = 0.5
+		var h: float = 0.8
 		if pr.attack.kind == AttackData.Kind.LOB:
 			var t := pr.lob_progress()
-			h = 0.5 + 12.0 * t * (1.0 - t)
+			h = lerp(0.8, 0.35, t) + 12.0 * t * (1.0 - t)
 
 		node.position = Vector3(p.x, h, p.y)
 
@@ -339,16 +377,58 @@ func _render(alpha: float, delta: float) -> void:
 	if world.mode is Heist:
 		_render_heist_shards()
 
-	# 4. Плавное следование камеры за игроком
+	# 4. Плавное следование камеры за игроком с ограничением по границам карты
 	if player != null and _brawler_views.has(player.id):
-		var target_pos := Vector3(player.pos.x, CAMERA_HEIGHT, player.pos.y + CAMERA_Z_OFFSET)
-		_camera.position = _camera.position.lerp(target_pos, delta * CAMERA_LERP_SPEED)
-		var look_target := Vector3(_camera.position.x, 0.0, _camera.position.z - CAMERA_Z_OFFSET)
-		_camera.look_at(look_target)
+		var look_target := _get_clamped_camera_target()
+		var target_pos := Vector3(look_target.x, CAMERA_HEIGHT, look_target.z + CAMERA_Z_OFFSET)
+		_camera.position = _camera.position.lerp(target_pos, clampf(delta * CAMERA_LERP_SPEED, 0.0, 1.0))
+		_camera.look_at(Vector3(_camera.position.x, 0.0, _camera.position.z - CAMERA_Z_OFFSET))
 
 	# 5. Обновление интерфейса
 	if _hud != null:
 		_hud.update_hud(world, player)
+
+
+## Вычисляет точку фокуса камеры с ограничением видимой области границами карты
+func _get_clamped_camera_target() -> Vector3:
+	if world == null or world.map == null:
+		var px := player.pos.x if player != null else 16.5
+		var py := player.pos.y if player != null else 9.5
+		return Vector3(px, 0.0, py)
+
+	var map_w := float(world.map.width)
+	var map_h := float(world.map.height)
+
+	var vp_size := Vector2(1280, 720)
+	if get_viewport() != null:
+		vp_size = get_viewport().get_visible_rect().size
+	var aspect := vp_size.x / maxf(1.0, vp_size.y)
+
+	# Вычисляем видимую область на земле (STYLE.md §6)
+	var half_x := 10.72 * aspect
+	var forward_z := 19.87
+	var backward_z := 9.75
+	var margin := 1.5
+
+	var min_cx := half_x - margin
+	var max_cx := map_w - half_x + margin
+	var target_x: float
+	if min_cx >= max_cx:
+		target_x = map_w * 0.5
+	else:
+		var px := player.pos.x if player != null else map_w * 0.5
+		target_x = clampf(px, min_cx, max_cx)
+
+	var min_cz := forward_z - margin
+	var max_cz := map_h - backward_z + margin
+	var target_z: float
+	if min_cz >= max_cz:
+		target_z = map_h * 0.5
+	else:
+		var py := player.pos.y if player != null else map_h * 0.5
+		target_z = clampf(py, min_cz, max_cz)
+
+	return Vector3(target_x, 0.0, target_z)
 
 
 func _create_projectile_node(pr: SimProjectile) -> Node3D:
@@ -363,6 +443,12 @@ func _create_projectile_node(pr: SimProjectile) -> Node3D:
 	var col := BrawlerView.COLOR_TEAM_0 if pr.team == 0 else BrawlerView.COLOR_TEAM_1
 	mat.albedo_color = col.lightened(0.3)
 	node.material_override = mat
+
+	var bv: BrawlerView = _brawler_views.get(pr.owner_id)
+	if bv != null:
+		node.position = bv.get_muzzle_global_position()
+	else:
+		node.position = Vector3(pr.pos.x, 0.8, pr.pos.y)
 
 	add_child(node)
 	return node

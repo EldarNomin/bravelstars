@@ -23,7 +23,9 @@ jobs:
           pip install "gdtoolkit==4.*"
           gdlint src tests tools
       - name: Тесты
-        run: tools/run_tests.sh ~/godot/godot
+        run: |
+          bash tests/tools/test_run_tests.sh
+          tools/run_tests.sh ~/godot/godot
 
   android:
     needs: test
@@ -48,7 +50,7 @@ jobs:
         run: |
           keytool -genkeypair -v -keystore ~/debug.keystore -storepass android -keypass android \
             -alias androiddebugkey -dname "CN=Android Debug,O=Android,C=US" -keyalg RSA -keysize 2048 -validity 10000
-          ~/godot/godot --headless --editor --quit >/dev/null 2>&1 || true
+          ~/godot/godot --headless --editor --quit
           SETTINGS=$(ls ~/.config/godot/editor_settings-*.tres)
           sed -i '/^export\/android\//d' "$SETTINGS"
           {
@@ -61,7 +63,7 @@ jobs:
       - name: Экспорт debug APK
         run: |
           mkdir -p build
-          ~/godot/godot --headless --import >/dev/null 2>&1 || true
+          ~/godot/godot --headless --import
           ~/godot/godot --headless --export-debug "Android" build/bravelstars-debug.apk
           ls -la build
           test -s build/bravelstars-debug.apk

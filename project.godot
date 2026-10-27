@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 
 Events="*res://src/core/events.gd"
 Config="*res://src/core/config.gd"
+Game="*res://src/core/game.gd"
 
 [display]
 

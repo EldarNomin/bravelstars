@@ -11,6 +11,18 @@
 4. Ревью всех PR делает Claude. Сам в `main` не мержишь.
 5. Не понятно или задача требует выйти за свои папки — пиши вопрос в PR, а не угадывай.
 
+## Рабочие копии на ПК
+
+Агенты работают на одном компьютере в `mobilegames/`. **Каждый — в своём `git worktree`**, чужие не переключать:
+
+| Агент | Папка |
+|---|---|
+| Antigravity | `mobilegames/bravelstars` (основной клон) |
+| Codex | `mobilegames/bravelstars-codex` |
+| GLM | `mobilegames/bravelstars-glm` |
+
+Создать: `git -C mobilegames/bravelstars worktree add ../bravelstars-<агент> origin/dev`.
+
 ## Владение папками
 
 Править чужие папки можно только минимально и с пояснением в PR.

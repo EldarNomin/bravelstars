@@ -4,10 +4,15 @@ extends Node3D
 ## Нужна, чтобы щупать ядро до появления настоящих view/UI (задачи Antigravity C-05..C-07).
 ##
 ## WASD — движение, ЛКМ — выстрел в сторону курсора, E — автоприцел,
-## ПКМ/Пробел — супер в сторону курсора, R — новый матч, 1/2/3 — сменить героя и начать заново.
+## ПКМ/Пробел — супер в сторону курсора, R — новый матч, 1/2/3 — сменить героя и начать заново,
+## M — сменить режим (бой команд / «Добыча»).
 ## Остальные 5 героев — боты (C-10), режим — бой команд до 10 убийств (G-01).
 
-const MAP_PATH: String = "res://data/maps/_debug_arena.json"
+const MODES: Array[String] = ["teamfight", "heist"]
+const MAP_PATHS: Dictionary = {
+	"teamfight": "res://data/maps/_debug_arena.json",
+	"heist": "res://data/maps/_debug_heist.json",
+}
 const HEROES: Array[String] = ["lynx", "anvil", "shishka"]
 const TEAM_COLORS: Array[Color] = [Color(0.25, 0.55, 1.0), Color(1.0, 0.3, 0.3)]
 const TILE_COLORS: Dictionary = {
@@ -39,6 +44,8 @@ var _pending_super: bool = false
 var _bots: BotTeam
 var _hero_index: int = 0
 var _match_seed: int = 1
+var _mode_index: int = 0
+var _shard_nodes: Array[Node3D] = []
 
 @onready var _camera: Camera3D = $Camera3D
 @onready var _hud: Label = $HUD/Info
@@ -49,14 +56,23 @@ func _ready() -> void:
 
 
 func _start() -> void:
-	for n in _tile_nodes.values() + _brawler_nodes.values() + _projectile_nodes.values():
+	var old: Array = _tile_nodes.values() + _brawler_nodes.values() + _projectile_nodes.values()
+	for n in old + _shard_nodes:
 		n.queue_free()
 	_tile_nodes.clear()
 	_brawler_nodes.clear()
 	_projectile_nodes.clear()
+	_shard_nodes.clear()
 	_match_seed += 1
-	world = SimWorld.new(SimMap.load_json(MAP_PATH), _match_seed, load("res://data/balance/global.tres"))
-	world.mode = TeamFight.new()
+	var mode_id := MODES[_mode_index]
+	var balance: GlobalBalance = load("res://data/balance/global.tres")
+	world = SimWorld.new(SimMap.load_json(MAP_PATHS[mode_id]), _match_seed, balance)
+	if mode_id == "heist":
+		var heist := Heist.new()
+		world.mode = heist
+		heist.setup(world)
+	else:
+		world.mode = TeamFight.new()
 	_bots = BotTeam.new(world)
 	player = world.add_brawler(_hero(HEROES[_hero_index]), 0)
 	for team in 2:
@@ -78,6 +94,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		_pending_super = true
 	if event is InputEventKey and event.pressed:
 		if event.physical_keycode == KEY_R:
+			_start()
+		elif event.physical_keycode == KEY_M:
+			_mode_index = (_mode_index + 1) % MODES.size()
 			_start()
 		elif event.physical_keycode >= KEY_1 and event.physical_keycode <= KEY_3:
 			_hero_index = event.physical_keycode - KEY_1
@@ -151,6 +170,7 @@ func _render(alpha: float) -> void:
 		if not alive_ids.has(id):
 			_projectile_nodes[id].queue_free()
 			_projectile_nodes.erase(id)
+	_render_heist()
 	var focus: Node3D = _brawler_nodes[player.id]
 	_camera.position = focus.position + CAMERA_OFFSET
 	_camera.look_at(focus.position)
@@ -166,10 +186,11 @@ func _render(alpha: float) -> void:
 		status = "%d:%02d" % [secs_left / 60, secs_left % 60]
 	_hud.text = (
 		"СИНИЕ %d : %d КРАСНЫЕ   %s\n" % [m.scores[0], m.scores[1], status]
-		+ "%s  HP %d/%d   патроны %d   супер %d%%\n"
+		+ "%s  HP %d/%d   патроны %d   супер %d%%   %s\n"
 		% [player.data.display_name, player.hp, player.data.max_hp, player.ammo,
-			player.super_charge * 100 / SimConstants.SUPER_CHARGE_MAX]
-		+ "WASD — бег, ЛКМ — выстрел, E — автоприцел, ПКМ/Пробел — супер, 1/2/3 — герой, R — заново"
+			player.super_charge * 100 / SimConstants.SUPER_CHARGE_MAX,
+			"осколков %d" % Heist.carried(player) if m is Heist else ""]
+		+ "WASD — бег, ЛКМ — выстрел, E — автоприцел, ПКМ/Пробел — супер, 1/2/3 — герой, M — режим, R — заново"
 	)
 
 
@@ -256,3 +277,30 @@ func _material(color: Color, translucent: bool = false) -> StandardMaterial3D:
 			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		_materials[key] = mat
 	return _materials[key]
+
+
+## Осколки «Добычи» (жёлтые), шахта и сейфы команд. Временная отрисовка до C-06.
+func _render_heist() -> void:
+	if not world.mode is Heist:
+		return
+	var h: Heist = world.mode
+	while _shard_nodes.size() < h.shards.size() + 3:
+		_shard_nodes.append(_make_sphere(0.25, Color(1.0, 0.85, 0.2)))
+	for i in _shard_nodes.size():
+		var n := _shard_nodes[i]
+		n.visible = true
+		if i < h.shards.size():
+			n.position = Vector3(h.shards[i].x, 0.3, h.shards[i].y)
+		elif i == h.shards.size():
+			n.position = Vector3(h.mine.x, 0.05, h.mine.y)
+			n.scale = Vector3(3, 0.3, 3)
+		elif i - h.shards.size() - 1 < 2:
+			var team := i - h.shards.size() - 1
+			n.position = Vector3(h.safes[team].x, 0.05, h.safes[team].y)
+			n.scale = Vector3(4, 0.3, 4)
+			n.material_override = _material(TEAM_COLORS[team].darkened(0.3))
+		else:
+			n.visible = false
+		if i < h.shards.size():
+			n.scale = Vector3.ONE
+			n.material_override = _material(Color(1.0, 0.85, 0.2))

@@ -17,7 +17,24 @@ static func validate(m: SimMap) -> PackedStringArray:
 	_check_bushes(m, errs)
 	_check_reachability(m, errs)
 	_check_spawn_lanes(m, errs)
+	if m.meta.get("mode") == "heist":
+		_check_heist(m, errs)
 	return errs
+
+
+## «Добыча»: одна шахта 'G' в центре симметрии, сейфы 'A' (команда 1) и 'B' (команда 2) зеркальны.
+static func _check_heist(m: SimMap, errs: PackedStringArray) -> void:
+	var g: Array = m.markers.get("G", [])
+	var a: Array = m.markers.get("A", [])
+	var b: Array = m.markers.get("B", [])
+	if g.size() != 1 or a.size() != 1 or b.size() != 1:
+		errs.append("Добыча: нужно ровно по одной метке G, A, B")
+		return
+	var center := Vector2(m.width, m.height) * 0.5
+	if (g[0] as Vector2).distance_to(center) > 0.01:
+		errs.append("Добыча: шахта G не в центре карты")
+	if (a[0] as Vector2) != Vector2(m.width, m.height) - (b[0] as Vector2):
+		errs.append("Добыча: сейфы A и B не зеркальны")
 
 
 static func _check_edges(m: SimMap, errs: PackedStringArray) -> void:

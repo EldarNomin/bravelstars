@@ -34,6 +34,9 @@ var kills: int = 0
 var deaths: int = 0
 ## Поле для режимов (кристаллы, усилители и т.п.).
 var mode_data: Dictionary = {}
+## Режим может замедлить героя (например, несущего добычу) и сделать видимым в кустах.
+var speed_mult: float = 1.0
+var force_visible: bool = false
 
 
 func _init(p_id: int, p_team: int, p_data: BrawlerData, p_pos: Vector2) -> void:

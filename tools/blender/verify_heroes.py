@@ -10,6 +10,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 from build_heroes import BONES, HEROES  # noqa: E402
 from common import reset_scene  # noqa: E402
+from hero_animations import FRAMES, SPEED  # noqa: E402
 
 ROOT = SCRIPT_DIR.parent.parent
 
@@ -37,6 +38,9 @@ def validate(name):
     mesh.data.calc_loop_triangles()
     triangles = len(mesh.data.loop_triangles)
     check(0 < triangles <= 1500, f"{name}: {triangles} triangles")
+    for track in rig.animation_data.nla_tracks:
+        track.mute = True
+    rig.animation_data.action = bpy.data.actions.get("idle")
     bpy.context.scene.frame_set(0)
     bpy.context.view_layer.update()
     points = [mesh.matrix_world @ vertex.co for vertex in mesh.data.vertices]
@@ -77,7 +81,31 @@ def validate(name):
     start, middle, end = (evaluated_points(frame) for frame in (0, 18, 36))
     check(max((a - b).length for a, b in zip(start, middle)) > 0.001, f"{name}: idle does not deform mesh")
     check(max((a - b).length for a, b in zip(start, end)) < 0.001, f"{name}: idle does not close")
-    print(f"HERO {name}: {triangles} triangles, dimensions {[round(x, 3) for x in spans]}, idle 1.5 s")
+    for clip, duration in FRAMES.items():
+        action = bpy.data.actions.get(clip)
+        check(action is not None and abs(action.frame_range[1] - action.frame_range[0] - duration) < 0.01,
+              f"{name}: missing or invalid {clip}")
+        rig.animation_data.action = action
+        start, middle = (evaluated_points(frame) for frame in (0, duration // 2))
+        check(max((a - b).length for a, b in zip(start, middle)) > 0.005, f"{name}: {clip} is static")
+        if clip in ("idle", "run"):
+            end = evaluated_points(duration)
+            check(max((a - b).length for a, b in zip(start, end)) < 0.001, f"{name}: {clip} does not close")
+    rig.animation_data.action = bpy.data.actions["run"]
+    for bone, first in (("leg.L", 0), ("leg.R", 9)):
+        group = mesh.vertex_groups[bone].index
+        indices = [v.index for v in mesh.data.vertices if (mesh.matrix_world @ v.co).z < 0.13
+                   and any(g.group == group for g in v.groups)]
+        anchors = []
+        for frame in range(first, first + 6):
+            points = evaluated_points(frame)
+            boot = [points[index] for index in indices]
+            anchors.append(sum(point.y for point in boot) / len(boot) + SPEED[name] * (frame - first) / 24)
+            check(abs(min(point.z for point in boot)) < 0.003, f"{name}: {bone} below/above floor")
+        check(max(anchors) - min(anchors) < 0.003, f"{name}: {bone} slides during contact")
+    rig.animation_data.action = bpy.data.actions["idle"]
+    bpy.context.scene.frame_set(0)
+    print(f"HERO {name}: {triangles} triangles, dimensions {[round(x, 3) for x in spans]}, 5 animated clips")
 
 
 def main():

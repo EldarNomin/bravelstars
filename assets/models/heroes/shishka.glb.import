@@ -41,7 +41,8 @@ materials/extract_format=0
 materials/extract_path=""
 _subresources={
 "animations": {
-"idle": {"settings/loop_mode": 1}
+"idle": {"settings/loop_mode": 1},
+"run": {"settings/loop_mode": 1}
 }
 }
 gltf/naming_version=2

@@ -31,7 +31,9 @@ godot --headless -s tools/blender/check_heroes.gd
 
 Герои используют одинаковые кости `root`, `spine`, `head_bone`, `arm.L`, `arm.R`, `leg.L`, `leg.R`.
 Сокеты `head` и `muzzle` привязаны к костям. `idle` длится 1,5 с; настройки импорта `.glb.import`
-задают его зацикливание в Godot. Остальные анимации относятся к A-03.
+задают зацикливание `idle` и `run` в Godot. A-03 добавляет также `attack`, `super` и `death`.
+Бег выполняется на месте: сцена перемещает персонажа, а фаза опоры рассчитана на его скорость из данных.
+Листы кадров создаются командой `blender -b --python-exit-code 1 -P tools/blender/render_animations.py`.
 
 | Модель | Треугольники |
 |---|---:|

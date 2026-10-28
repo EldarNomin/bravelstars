@@ -49,3 +49,22 @@ godot --headless -s tools/blender/check_heroes.gd
 повторного импорта, запрещают текстуры и проверяют загрузку всех GLB в Godot. CI пересобирает модели и
 сверяет окружение побайтно, а героев — по импортированной геометрии, материалам, весам,
 скелету, точкам привязки и позам анимации с допуском на различия вычислений между ОС.
+
+## A-04: снаряды и объекты «Добычи»
+
+```sh
+blender -b --python-exit-code 1 -P tools/blender/build_fx.py
+blender -b --python-exit-code 1 -P tools/blender/verify_fx.py
+blender -b --python-exit-code 1 -P tools/blender/render_fx.py
+godot --headless --editor --import
+godot --headless -s tools/blender/check_fx.gd
+```
+
+В `assets/models/fx/` находятся `lynx_bullet`, `anvil_pellet`, `pinecone`, `pinecone_super`,
+`loot_shard`, `safe_blue`, `safe_red`, `mine`. Пуля ориентирована вдоль Godot −Z; снаряды и
+осколок имеют центр в начале координат, сейфы и шахта стоят на полу. Сейфы различаются цветом
+и знаком: круг для синей команды, ромб для красной. Существующие деревянные обломки A-01
+лежат в `assets/models/env/debris_01.glb`…`debris_04.glb`.
+
+Пять мелких объектов содержат 8–90 треугольников, сейфы — 84 и 116, шахта — 124.
+На превью снаряды и осколок увеличены в два раза относительно моделей сейфов и шахты.

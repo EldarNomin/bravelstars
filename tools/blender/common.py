@@ -9,6 +9,7 @@ import bpy
 STYLE_HEX = {
     "ground": "7D6B58", "wood": "965A38", "stone": "3E444C",
     "bush": "2D6A4F", "water": "2A8794", "amber": "F6AD55",
+    "team_a": "2B6CB0", "team_b": "C53030",
 }
 
 
@@ -31,6 +32,7 @@ PALETTE = {
     "fur": style_color("ground", 1.75), "skin": style_color("ground", 1.50),
     "cloth_lynx": style_color("bush", 0.45), "cloth_anvil": style_color("stone", 0.55),
     "cloth_shishka": style_color("wood", 0.45), "amber": style_color("amber"),
+    "team_a": style_color("team_a"), "team_b": style_color("team_b"),
 }
 
 # (maximum x/y/z span, minimum z, maximum z); Blender coordinates are metres, Z is up.

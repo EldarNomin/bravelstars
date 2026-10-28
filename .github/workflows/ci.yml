@@ -72,6 +72,41 @@ jobs:
           bash tests/tools/test_run_tests.sh
           tools/run_tests.sh ~/godot/godot
 
+  scene-smoke:
+    name: Real scenes and HUD screenshot
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/cache@v4
+        with:
+          path: ~/godot
+          key: godot-${{ hashFiles('.godot-version') }}
+      - name: Install renderer and Godot
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth ffmpeg libgl1-mesa-dri
+          python3 -m pip install --user 'Pillow>=10,<14'
+          tools/ci_install_godot.sh
+      - name: Smoke scenes and rendered HUD
+        env:
+          SMOKE_OUTPUT_DIR: ${{ runner.temp }}/scene-smoke
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          python3 tools/scene_smoke/test_check_frame.py
+          bash tools/scene_smoke/run.sh ~/godot/godot
+      - name: Upload logs and screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scene-smoke
+          path: |
+            ${{ runner.temp }}/scene-smoke/*.log
+            ${{ runner.temp }}/scene-smoke/*.png
+          if-no-files-found: warn
+
   android:
     needs: test
     runs-on: ubuntu-latest

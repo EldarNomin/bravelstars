@@ -239,7 +239,9 @@ func _combat(world: SimWorld, me: SimBrawler, target: SimBrawler, cmd: InputComm
 		cmd.attack = true
 		cmd.attack_aim = _aim(me, target, atk)
 	var sup := me.data.super_attack
-	if me.super_ready() and sup != null and dist <= sup.range_tiles and _can_hit_with(world, me, target, sup):
+	# Рывок/таран — ещё и способ сблизиться: можно применять чуть дальше своей длины.
+	var sup_reach := sup.range_tiles + (1.5 if me.ability is DashSuper else 0.0) if sup != null else 0.0
+	if me.super_ready() and sup != null and dist <= sup_reach and _can_hit_with(world, me, target, sup):
 		cmd.use_super = true
 		cmd.super_aim = _aim(me, target, sup)
 

@@ -48,3 +48,11 @@ func test_stun_blocks_movement() -> void:
 	b.stun_ticks = 10
 	SimFixtures.run(w, 10, b, InputCommand.create(Vector2.RIGHT))
 	assert_eq(b.pos, Vector2(5, 5))
+
+
+func test_odd_team_takes_spawns_mirrored() -> void:
+	var w := SimWorld.new(SimMap.from_lines(PackedStringArray(["1...2", "1...2", "1...2"])))
+	var a := w.add_brawler(SimFixtures.brawler(), 0)
+	var b := w.add_brawler(SimFixtures.brawler(), 1)
+	assert_eq(a.pos, Vector2(0.5, 0.5), "команда 1 — сверху вниз")
+	assert_eq(b.pos, Vector2(4.5, 2.5), "команда 2 — снизу вверх (зеркально при повороте на 180°)")

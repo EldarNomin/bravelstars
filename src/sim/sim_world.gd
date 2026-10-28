@@ -23,6 +23,8 @@ var mode: GameMode
 var _inputs: Dictionary = {}
 var _by_id: Dictionary = {}
 var _next_id: int = 1
+## Номер выстрела, чьё попадание сейчас обрабатывается (для поля attack_id в событии hit).
+var _hit_attack_id: int = 0
 ## Клетка -> тик, когда отрастёт куст.
 var _regrow: Dictionary = {}
 
@@ -182,6 +184,7 @@ func fire_attack(caster: SimBrawler, attack: AttackData, aim: Vector2, is_super:
 		dir = aim_vec.normalized()
 	caster.facing = dir
 	caster.reveal_until_tick = tick + secs(balance.reveal_after_attack)
+	var attack_id := _alloc_id()
 	var n := maxi(1, attack.projectile_count)
 	for i in n:
 		var angle := 0.0
@@ -193,6 +196,7 @@ func fire_attack(caster: SimBrawler, attack: AttackData, aim: Vector2, is_super:
 		p.team = caster.team
 		p.attack = attack
 		p.is_super = is_super
+		p.attack_id = attack_id
 		p.pos = caster.pos
 		p.start = caster.pos
 		p.dir = dir.rotated(angle)
@@ -203,7 +207,9 @@ func fire_attack(caster: SimBrawler, attack: AttackData, aim: Vector2, is_super:
 			p.target = caster.pos + p.dir * dist
 			p.flight_ticks = maxi(1, SimConstants.ticks(attack.flight_time))
 		projectiles.append(p)
-	emit(SimEvents.ATTACK, {"brawler": caster.id, "super": is_super, "dir": dir, "pos": caster.pos})
+	emit(SimEvents.ATTACK, {
+		"brawler": caster.id, "super": is_super, "dir": dir, "pos": caster.pos, "attack_id": attack_id,
+	})
 
 
 ## from — точка, ОТ которой отбрасывает цель (для прямого снаряда — позади цели по линии полёта).
@@ -235,7 +241,7 @@ func damage(
 		source.add_super_charge(attack.super_charge_per_hit)
 	emit(SimEvents.HIT, {
 		"target": target.id, "source": source.id if source else 0,
-		"amount": amount, "super": is_super, "pos": target.pos,
+		"amount": amount, "super": is_super, "pos": target.pos, "attack_id": _hit_attack_id,
 	})
 	if target.hp <= 0:
 		_kill(target, source)
@@ -341,7 +347,9 @@ func _update_straight(p: SimProjectile) -> void:
 			var closest := Geometry2D.get_closest_point_to_segment(b.pos, prev, p.pos)
 			if closest.distance_to(b.pos) <= b.data.radius + a.projectile_radius:
 				p.hit_ids.append(b.id)
+				_hit_attack_id = p.attack_id
 				damage(b, a.damage, owner, a, p.is_super, b.pos - p.dir)
+				_hit_attack_id = 0
 				if not a.pierce:
 					p.dead = true
 					return
@@ -359,7 +367,9 @@ func _update_lob(p: SimProjectile) -> void:
 		if b.team == p.team or not b.alive:
 			continue
 		if b.pos.distance_to(p.target) <= a.area_radius + b.data.radius:
+			_hit_attack_id = p.attack_id
 			damage(b, a.damage, owner, a, p.is_super, p.target)
+			_hit_attack_id = 0
 	if a.breaks_walls:
 		var r := ceili(a.area_radius)
 		var c := map.cell_of(p.target)
@@ -399,7 +409,12 @@ func _pick_spawn(team: int) -> Vector2:
 	for b in brawlers:
 		if b.team == team:
 			count += 1
-	return points[count % points.size()]
+	var i := count % points.size()
+	# Карты симметричны поворотом на 180°: точки читаются сверху вниз, поэтому у нечётной
+	# команды порядок обратный — тогда N-й герой каждой команды стоит в зеркальной точке.
+	if team % 2 == 1:
+		i = points.size() - 1 - i
+	return points[i]
 
 
 func _alloc_id() -> int:

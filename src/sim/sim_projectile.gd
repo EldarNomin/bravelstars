@@ -11,6 +11,8 @@ var pos: Vector2 = Vector2.ZERO
 var dir: Vector2 = Vector2.RIGHT
 var traveled: float = 0.0
 var hit_ids: Array[int] = []
+## Номер выстрела: у всех снарядов одного выстрела (дробь) он общий.
+var attack_id: int = 0
 
 var start: Vector2 = Vector2.ZERO
 var target: Vector2 = Vector2.ZERO

@@ -4,6 +4,7 @@ extends Control
 ## Поддерживает режимы TeamFight и Heist (Добыча).
 
 signal restart_requested
+signal lobby_requested
 
 const COLOR_ALLY: Color = Color(0.25, 0.55, 1.0)
 const COLOR_ENEMY: Color = Color(1.0, 0.3, 0.3)
@@ -20,6 +21,7 @@ var _result_panel: PanelContainer
 var _result_title: Label
 var _result_details: Label
 var _restart_button: Button
+var _lobby_button: Button
 
 
 func _ready() -> void:
@@ -146,7 +148,7 @@ func _build_result_panel() -> void:
 	_result_panel.add_child(center)
 
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(380, 240)
+	card.custom_minimum_size = Vector2(440, 260)
 	center.add_child(card)
 
 	var vbox := VBoxContainer.new()
@@ -161,20 +163,36 @@ func _build_result_panel() -> void:
 
 	_result_details = Label.new()
 	_result_details.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_result_details.add_theme_font_size_override("font_size", 18)
+	_result_details.add_theme_font_size_override("font_size", 17)
 	vbox.add_child(_result_details)
+
+	var btn_row := HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_row.add_theme_constant_override("separation", 16)
+	vbox.add_child(btn_row)
 
 	_restart_button = Button.new()
 	_restart_button.text = "ЕЩЁ РАЗ"
 	_restart_button.custom_minimum_size = Vector2(160, 48)
-	_restart_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_restart_button.add_theme_font_size_override("font_size", 18)
 	_restart_button.pressed.connect(func() -> void: restart_requested.emit())
-	vbox.add_child(_restart_button)
+	btn_row.add_child(_restart_button)
+
+	_lobby_button = Button.new()
+	_lobby_button.text = "В ЛОББИ"
+	_lobby_button.custom_minimum_size = Vector2(160, 48)
+	_lobby_button.add_theme_font_size_override("font_size", 18)
+	_lobby_button.pressed.connect(func() -> void: lobby_requested.emit())
+	btn_row.add_child(_lobby_button)
 
 
 ## Обновляет данные интерфейса каждый кадр/тик
-func update_hud(world: SimWorld, player: SimBrawler) -> void:
+func update_hud(
+	world: SimWorld,
+	player: SimBrawler,
+	kills: int = 0,
+	deaths: int = 0
+) -> void:
 	var mode := world.mode
 	if mode == null:
 		return
@@ -227,8 +245,10 @@ func update_hud(world: SimWorld, player: SimBrawler) -> void:
 			_result_title.text = "ПОРАЖЕНИЕ"
 			_result_title.add_theme_color_override("font_color", Color(0.9, 0.25, 0.25))
 
-		_result_details.text = "Счёт: %d — %d   (время матча: %d с)" % [
-			s0, s1, world.tick / SimConstants.TICK_RATE
-		]
+		_result_details.text = (
+			"Счёт: %d — %d   (время матча: %d с)\nТвои убийства: %d   •   Смерти: %d" % [
+				s0, s1, world.tick / SimConstants.TICK_RATE, kills, deaths
+			]
+		)
 	else:
 		_result_panel.visible = false

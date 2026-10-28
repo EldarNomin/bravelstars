@@ -7,7 +7,7 @@
 [sub_resource type="Resource" id="Attack_main"]
 script = ExtResource("1_atk")
 kind = 0
-damage = 360
+damage = 330
 projectile_count = 5
 spread_deg = 24.0
 range_tiles = 3.5

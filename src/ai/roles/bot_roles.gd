@@ -10,5 +10,7 @@ const PROFILES: Dictionary = {
 }
 
 
+## Копия ресурса: настройка профиля одного бота не должна менять других.
 static func profile_for(id: StringName) -> BotProfile:
-	return PROFILES.get(id) as BotProfile
+	var p := PROFILES.get(id) as BotProfile
+	return p.duplicate() if p != null else null

@@ -71,6 +71,14 @@ jobs:
         run: |
           bash tests/tools/test_run_tests.sh
           tools/run_tests.sh ~/godot/godot
+      - name: Проверить журнал и сводку матчей
+        run: |
+          pip install 'Pillow>=10,<14'
+          python tools/match_log/test_summarize.py
+          mkdir -p "$RUNNER_TEMP/match-logs"
+          ~/godot/godot --headless -s tools/match_log/run_matches.gd -- \
+            "--output-dir=$RUNNER_TEMP/match-logs" "--revision=$GITHUB_SHA"
+          python tools/match_log/summarize.py "$RUNNER_TEMP/match-logs" --output-dir "$RUNNER_TEMP/match-report"
 
   android:
     needs: test

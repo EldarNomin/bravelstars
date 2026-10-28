@@ -1,8 +1,8 @@
 class_name BrawlerView
 extends Node3D
 ## Отображение одного героя на арене.
-## Включает 3D-модель (или капсулу), маркер команды под ногами по STYLE.md
-## и биллборд с полосками HP/зарядов/супера над головой.
+## Включает 3D-модель из assets/models/heroes/<id>.glb (или капсулу-фоллбэк),
+## маркер команды под ногами по STYLE.md и биллборд с полосками HP/зарядов/супера над головой.
 
 const COLOR_TEAM_0: Color = Color(0.17, 0.42, 0.69)  ## #2B6CB0 сапфир
 const COLOR_TEAM_1: Color = Color(0.77, 0.19, 0.19)  ## #C53030 рубин
@@ -11,20 +11,30 @@ const COLOR_HP_ENEMY: Color = Color(0.85, 0.22, 0.22)  ## красный
 const COLOR_AMMO: Color = Color(0.92, 0.79, 0.29)  ## #ECC94B
 const COLOR_SHARD: Color = Color(0.96, 0.68, 0.33)  ## #F6AD55
 const COLOR_SUPER: Color = Color(1.0, 0.84, 0.0)  ## #FFD700
+const ROTATION_LERP_SPEED: float = 18.0
 
 var brawler_id: int = 0
 var team: int = 0
 var is_local_player: bool = false
 
 var _model_container: Node3D
+var _hero_instance: Node3D
+var _anim_player: AnimationPlayer
+var _muzzle_node: Node3D
+var _head_node: Node3D
+var _mesh_instances: Array[MeshInstance3D] = []
+
 var _capsule_mesh: MeshInstance3D
+var _capsule_mat: StandardMaterial3D
 var _ground_marker: MeshInstance3D
+var _marker_mat: StandardMaterial3D
 var _sprite_billboard: Sprite3D
 var _sub_viewport: SubViewport
 var _bar_drawer: Control
 
-var _capsule_mat: StandardMaterial3D
-var _marker_mat: StandardMaterial3D
+var _current_yaw: float = 0.0
+var _is_playing_action: bool = false
+var _is_moving: bool = false
 
 var _cached_hp: int = -1
 var _cached_max_hp: int = -1
@@ -44,23 +54,42 @@ func _init(p_brawler: SimBrawler, p_is_local: bool = false) -> void:
 
 
 func _setup_nodes(p_brawler: SimBrawler) -> void:
-	# 1. Контейнер для 3D-модели (в будущем сюда вставляется модель от Codex)
+	# 1. Контейнер для 3D-модели
 	_model_container = Node3D.new()
 	_model_container.name = "ModelContainer"
 	add_child(_model_container)
 
-	_capsule_mat = StandardMaterial3D.new()
-	_capsule_mat.albedo_color = COLOR_TEAM_0 if team == 0 else COLOR_TEAM_1
-	_capsule_mat.roughness = 0.4
+	# Загрузка 3D-модели героя (A-05) по ID
+	var hero_id: String = p_brawler.data.id.to_lower()
+	var model_path: String = "res://assets/models/heroes/" + hero_id + ".glb"
+	if ResourceLoader.exists(model_path):
+		var scene: PackedScene = load(model_path)
+		if scene != null:
+			_hero_instance = scene.instantiate() as Node3D
+			_model_container.add_child(_hero_instance)
+			_anim_player = _find_animation_player(_hero_instance)
+			if _anim_player != null:
+				_anim_player.animation_finished.connect(_on_animation_finished)
+				if _anim_player.has_animation(&"idle"):
+					_anim_player.play(&"idle")
+			_muzzle_node = _find_node_by_name(_hero_instance, "muzzle") as Node3D
+			_head_node = _find_node_by_name(_hero_instance, "head") as Node3D
+			_collect_meshes(_hero_instance)
 
-	_capsule_mesh = MeshInstance3D.new()
-	var cap := CapsuleMesh.new()
-	cap.radius = p_brawler.data.radius
-	cap.height = 1.2
-	_capsule_mesh.mesh = cap
-	_capsule_mesh.position.y = 0.6
-	_capsule_mesh.material_override = _capsule_mat
-	_model_container.add_child(_capsule_mesh)
+	# Если модель отсутствует — фоллбэк на капсулу
+	if _hero_instance == null:
+		_capsule_mat = StandardMaterial3D.new()
+		_capsule_mat.albedo_color = COLOR_TEAM_0 if team == 0 else COLOR_TEAM_1
+		_capsule_mat.roughness = 0.4
+
+		_capsule_mesh = MeshInstance3D.new()
+		var cap := CapsuleMesh.new()
+		cap.radius = p_brawler.data.radius
+		cap.height = 1.2
+		_capsule_mesh.mesh = cap
+		_capsule_mesh.position.y = 0.6
+		_capsule_mesh.material_override = _capsule_mat
+		_model_container.add_child(_capsule_mesh)
 
 	# 2. Напольный маркер команды (STYLE.md: свои — кольцо, враги — треугольник)
 	_setup_ground_marker()
@@ -92,7 +121,6 @@ func _setup_ground_marker() -> void:
 		var prism := PrismMesh.new()
 		prism.size = Vector3(0.8, 0.02, 0.9)
 		_ground_marker.mesh = prism
-		# Призма по умолчанию лежит горизонтально, разворачиваем острием вперед
 		_ground_marker.rotation.x = 0.0
 
 	_ground_marker.material_override = _marker_mat
@@ -123,14 +151,81 @@ func _setup_overhead_hud(p_brawler: SimBrawler) -> void:
 	_cached_max_ammo = p_brawler.data.max_ammo
 
 
-## Обновляет 3D-позицию с интерполяцией
-func update_transform_interpolated(pos_2d: Vector2, facing: Vector2) -> void:
+## Возвращает мировую 3D-позицию сокета вылета снарядов (muzzle)
+func get_muzzle_global_position() -> Vector3:
+	if _muzzle_node != null and is_instance_valid(_muzzle_node):
+		return _muzzle_node.global_position
+	return global_position + Vector3(0.0, 0.8, 0.0)
+
+
+## Обновляет 3D-позицию с интерполяцией и плавным поворотом
+func update_transform_interpolated(pos_2d: Vector2, facing: Vector2, delta: float = 0.0) -> void:
 	position = Vector3(pos_2d.x, 0.0, pos_2d.y)
 	if not facing.is_zero_approx():
-		var angle := atan2(facing.x, facing.y)
-		_model_container.rotation = Vector3(0.0, angle, 0.0)
+		var target_angle := atan2(facing.x, facing.y)
+		if delta > 0.0:
+			var rot_factor := clampf(delta * ROTATION_LERP_SPEED, 0.0, 1.0)
+			_current_yaw = lerp_angle(_current_yaw, target_angle, rot_factor)
+		else:
+			_current_yaw = target_angle
+
+		_model_container.rotation = Vector3(0.0, _current_yaw, 0.0)
 		if team != 0 and _ground_marker != null:
-			_ground_marker.rotation = Vector3(0.0, angle, 0.0)
+			_ground_marker.rotation = Vector3(0.0, _current_yaw, 0.0)
+
+	# Позиционирование полоски HP над головой (по сокету head)
+	if _head_node != null and is_instance_valid(_head_node):
+		var head_y := _head_node.global_position.y - global_position.y
+		if head_y > 0.5:
+			_sprite_billboard.position.y = head_y + 0.35
+
+
+## Воспроизведение анимации действия (attack, super)
+func play_action(action_name: StringName) -> void:
+	if _anim_player != null and _anim_player.has_animation(action_name):
+		_is_playing_action = true
+		_anim_player.play(action_name)
+
+
+## Обработка гибели героя
+func on_death() -> void:
+	if _anim_player != null and _anim_player.has_animation(&"death"):
+		_is_playing_action = true
+		_anim_player.play(&"death")
+	else:
+		visible = false
+
+
+## Обработка возрождения героя
+func on_respawn() -> void:
+	visible = true
+	_is_playing_action = false
+	_update_locomotion()
+
+
+## Обновляет состояние движения (idle / run)
+func update_locomotion(is_moving: bool) -> void:
+	_is_moving = is_moving
+	if _is_playing_action:
+		return
+	_update_locomotion()
+
+
+func _update_locomotion() -> void:
+	if _anim_player == null:
+		return
+	if _is_moving and _anim_player.has_animation(&"run"):
+		if _anim_player.current_animation != &"run":
+			_anim_player.play(&"run")
+	elif _anim_player.has_animation(&"idle"):
+		if _anim_player.current_animation != &"idle":
+			_anim_player.play(&"idle")
+
+
+func _on_animation_finished(anim_name: StringName) -> void:
+	if anim_name == &"attack" or anim_name == &"super":
+		_is_playing_action = false
+		_update_locomotion()
 
 
 ## Обновляет состояние здоровья, зарядов, видимости
@@ -149,12 +244,18 @@ func update_state(brawler: SimBrawler, world: SimWorld, local_team: int) -> void
 	var is_friendly := brawler.team == local_team
 
 	if in_bush and is_friendly:
-		_capsule_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		_capsule_mat.albedo_color.a = 0.55
+		if _capsule_mat != null:
+			_capsule_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			_capsule_mat.albedo_color.a = 0.55
+		for m: MeshInstance3D in _mesh_instances:
+			m.transparency = 0.45
 		_marker_mat.albedo_color.a = 0.4
 	else:
-		_capsule_mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-		_capsule_mat.albedo_color.a = 1.0
+		if _capsule_mat != null:
+			_capsule_mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+			_capsule_mat.albedo_color.a = 1.0
+		for m: MeshInstance3D in _mesh_instances:
+			m.transparency = 0.0
 		_marker_mat.albedo_color.a = 0.75
 
 	# 2. Кэшируем значения для перерисовки полосок
@@ -188,7 +289,10 @@ func _on_bar_draw() -> void:
 	var offset_y: float = 6.0
 
 	# Фон полоски HP
-	_bar_drawer.draw_rect(Rect2(offset_x - 1, offset_y - 1, total_w + 2, bar_h + 2), Color(0.1, 0.12, 0.15, 0.9))
+	_bar_drawer.draw_rect(
+		Rect2(offset_x - 1, offset_y - 1, total_w + 2, bar_h + 2),
+		Color(0.1, 0.12, 0.15, 0.9)
+	)
 
 	# Заполнение HP
 	var hp_ratio := clampf(float(_cached_hp) / float(maxi(1, _cached_max_hp)), 0.0, 1.0)
@@ -251,3 +355,30 @@ func _on_bar_draw() -> void:
 			Vector2(shard_x - 5, offset_y - 4)
 		])
 		_bar_drawer.draw_colored_polygon(shard_pts, COLOR_SHARD)
+
+
+func _find_node_by_name(node: Node, target_name: String) -> Node:
+	if node.name.to_lower() == target_name.to_lower():
+		return node
+	for child: Node in node.get_children():
+		var found := _find_node_by_name(child, target_name)
+		if found != null:
+			return found
+	return null
+
+
+func _find_animation_player(node: Node) -> AnimationPlayer:
+	if node is AnimationPlayer:
+		return node as AnimationPlayer
+	for child: Node in node.get_children():
+		var found := _find_animation_player(child)
+		if found != null:
+			return found
+	return null
+
+
+func _collect_meshes(node: Node) -> void:
+	if node is MeshInstance3D:
+		_mesh_instances.append(node as MeshInstance3D)
+	for child: Node in node.get_children():
+		_collect_meshes(child)

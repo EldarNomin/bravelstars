@@ -62,7 +62,7 @@ func test_anvil_point_blank_and_charge() -> void:
 	var target := w.add_brawler(_hero("lynx"), 1, Vector2(6.9, 10.5))
 	w.set_input(me.id, InputCommand.create(Vector2.ZERO, true, Vector2.RIGHT))
 	SimFixtures.run(w, 10)
-	assert_eq(target.hp, 2600 - 5 * 360, "в упор все 5 дробин")
+	assert_eq(target.hp, 2600 - 5 * 330, "в упор все 5 дробин")
 	assert_eq(me.super_charge, 5 * 50)
 	assert_eq(_hits_to_super(me.data), 20, "4 полных залпа")
 

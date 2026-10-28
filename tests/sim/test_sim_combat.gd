@@ -245,3 +245,22 @@ func test_regen_resets_on_attack() -> void:
 	_shoot(Vector2.UP)
 	SimFixtures.run(w, 10)
 	assert_eq(me.hp, 1000, "выстрел сбросил таймер регена")
+
+
+func test_attack_id_links_pellets_and_hits() -> void:
+	var sg := SimFixtures.straight_attack(100, 5.0)
+	sg.projectile_count = 5
+	sg.spread_deg = 20.0
+	me.data.attack = sg
+	enemy.pos = Vector2(6.8, 10.5)
+	_shoot(Vector2.RIGHT)
+	SimFixtures.run(w, 10)
+	var attack_ids := {}
+	var hit_ids := {}
+	for e in w.drain_events():
+		if e["type"] == SimEvents.ATTACK:
+			attack_ids[e["attack_id"]] = true
+		elif e["type"] == SimEvents.HIT:
+			hit_ids[e["attack_id"]] = true
+	assert_eq(attack_ids.size(), 1, "один выстрел — один attack_id")
+	assert_eq(hit_ids.keys(), attack_ids.keys(), "все 5 попаданий дробью — от этого выстрела")

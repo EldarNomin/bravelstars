@@ -2,11 +2,11 @@ class_name SimEvents
 extends RefCounted
 ## Типы событий SimWorld.events. У каждого события есть поля "type" и "tick", остальные — ниже.
 
-## brawler, super: bool, dir: Vector2, pos: Vector2
+## brawler, super: bool, dir: Vector2, pos: Vector2, attack_id (общий у дробин одного выстрела)
 const ATTACK: StringName = &"attack"
 ## brawler, aim: Vector2 (сырой прицел игрока)
 const SUPER: StringName = &"super"
-## target, source (0 — нет), amount, super: bool, pos
+## target, source (0 — нет), amount, super: bool, pos, attack_id (0 — урон не от снаряда)
 const HIT: StringName = &"hit"
 ## target, amount
 const HEAL: StringName = &"heal"

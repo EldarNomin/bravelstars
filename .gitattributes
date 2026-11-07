@@ -11,3 +11,7 @@
 *.mp3 filter=lfs diff=lfs merge=lfs -text
 *.ttf filter=lfs diff=lfs merge=lfs -text
 *.otf filter=lfs diff=lfs merge=lfs -text
+# Unity writes a space after empty YAML values when serializing these files.
+unity/**/*.asset whitespace=-blank-at-eol
+unity/**/*.meta whitespace=-blank-at-eol
+unity/**/*.unity whitespace=-blank-at-eol

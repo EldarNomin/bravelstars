@@ -1,5 +1,10 @@
 # Bravel Stars (рабочее название)
 
+**Unity / Android:** перенесённая версия находится в [`unity/`](unity/README.md).
+Открывать в Unity Hub нужно эту папку. Настройка, управление и команды проверки
+описаны в её README; результаты проверок — в [`docs/unity/VALIDATION.md`](docs/unity/VALIDATION.md).
+Ниже сохранены инструкции для исходной версии Godot.
+
 Мобильный арена-шутер 3v3 на Godot 4, сначала Android.
 
 - План: [docs/PLAN.md](docs/PLAN.md)

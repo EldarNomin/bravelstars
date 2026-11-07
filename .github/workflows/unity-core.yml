@@ -1,0 +1,31 @@
+name: Unity portable core
+
+on:
+  push:
+    paths: ['unity/**', 'tools/unity/**', 'data/**', 'src/ai/roles/**', '.github/workflows/unity-core.yml']
+  pull_request:
+    paths: ['unity/**', 'tools/unity/**', 'data/**', 'src/ai/roles/**', '.github/workflows/unity-core.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  simulation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Check migration data against source
+        run: python tools/unity/export_data.py --check
+      - name: Check converted model receipts against source
+        run: python tools/unity/verify_models.py
+      - name: Compile and exercise portable simulation
+        run: dotnet run --project tools/unity/checks/Checks.csproj --configuration Release

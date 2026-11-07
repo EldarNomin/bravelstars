@@ -1,0 +1,167 @@
+[
+  {
+    "source": "assets/models/env/bush_01.glb",
+    "sha256": "46adcec5858169b1299e3272dd15e7dd793b43e93d1d03d0ae159322f0ce3a4a",
+    "output": "unity/Assets/Resources/Models/env/bush_01.fbx",
+    "triangles": 152,
+    "actions": []
+  },
+  {
+    "source": "assets/models/env/bush_02.glb",
+    "sha256": "4c3b562dbbedca76113c612c528412e48c982d187eb87324202e21b579470fb1",
+    "output": "unity/Assets/Resources/Models/env/bush_02.fbx",
+    "triangles": 152,
+    "actions": []
+  },
+  {
+    "source": "assets/models/env/debris_01.glb",
+    "sha256": "0d2324c3ddb04067ffcf08442bacfc5b255ceaacc9ccefb20b0b929686c14ad5",
+    "output": "unity/Assets/Resources/Models/env/debris_01.fbx",
+    "triangles": 16,
+    "actions": []
+  },
+  {
+    "source": "assets/models/env/debris_02.glb",
+    "sha256": "2c36b21e8dc3100aaaa7b9b7e66f5958f3b3e4db1626cd13ec4f05a06fc2accb",
+    "output": "unity/Assets/Resources/Models/env/debris_02.fbx",
+    "triangles": 16,
+    "actions": []
+  },
+  {
+    "source": "assets/models/env/debris_03.glb",
+    "sha256": "6f624e14507d78ab8b2dd763fee4b7bf54d0a12f0540f410b9fede0d60d3da08",
+    "output": "unity/Assets/Resources/Models/env/debris_03.fbx",
+    "triangles": 16,
+    "actions": []
+  },
+  {
+    "source": "assets/models/env/debris_04.glb",
+    "sha256": "e6b6ce6b91e43c1e49d90e919b8e758d157fc30f2344ba1a35d750f0203947d2",
+    "output": "unity/Assets/Resources/Models/env/debris_04.fbx",
+    "triangles": 16,
+    "actions": []
+  },
+  {
+    "source": "assets/models/env/floor.glb",
+    "sha256": "d8638cf3eba0ebacea84906fb5f5e2642dda57fbdbe02c5953b21a22800d6cea",
+    "output": "unity/Assets/Resources/Models/env/floor.fbx",
+    "triangles": 36,
+    "actions": []
+  },
+  {
+    "source": "assets/models/env/hard_wall.glb",
+    "sha256": "f4a2f1a50aba07364f83d7a3e257f7fbb423f43b1b545833408d4f584fb9361e",
+    "output": "unity/Assets/Resources/Models/env/hard_wall.fbx",
+    "triangles": 84,
+    "actions": []
+  },
+  {
+    "source": "assets/models/env/wall.glb",
+    "sha256": "2046e2adf33c39e2d00132f43f4d530f43cc576f778beef1435747bf2c7907a3",
+    "output": "unity/Assets/Resources/Models/env/wall.fbx",
+    "triangles": 180,
+    "actions": []
+  },
+  {
+    "source": "assets/models/env/water.glb",
+    "sha256": "0150d88707c77d771e0809667c7d0b07529bcfd57d96fcd5a105006aeee36716",
+    "output": "unity/Assets/Resources/Models/env/water.fbx",
+    "triangles": 48,
+    "actions": []
+  },
+  {
+    "source": "assets/models/fx/anvil_pellet.glb",
+    "sha256": "8cc68064a8bfeca1bdca5aa9d825c083e944273d01b19d326081fcdbac2f09d4",
+    "output": "unity/Assets/Resources/Models/fx/anvil_pellet.fbx",
+    "triangles": 8,
+    "actions": []
+  },
+  {
+    "source": "assets/models/fx/loot_shard.glb",
+    "sha256": "be861be12ae2267ade900b8c1575a699e0b39efff4ac0b3a65c84c0efdc9d64e",
+    "output": "unity/Assets/Resources/Models/fx/loot_shard.fbx",
+    "triangles": 8,
+    "actions": []
+  },
+  {
+    "source": "assets/models/fx/lynx_bullet.glb",
+    "sha256": "be88ef7b74ff878588403687099af51e046c0261acd6cad46a63f598e46cffb8",
+    "output": "unity/Assets/Resources/Models/fx/lynx_bullet.fbx",
+    "triangles": 56,
+    "actions": []
+  },
+  {
+    "source": "assets/models/fx/mine.glb",
+    "sha256": "b08e2f2fa6c2c9c2327b97fd32e078ea6c9cc1e015eff5629c12f302210c03ec",
+    "output": "unity/Assets/Resources/Models/fx/mine.fbx",
+    "triangles": 124,
+    "actions": []
+  },
+  {
+    "source": "assets/models/fx/pinecone.glb",
+    "sha256": "cbf2f11b7c59f478d784003d033db8dae57a169caca0701d1f8608811796b8e9",
+    "output": "unity/Assets/Resources/Models/fx/pinecone.fbx",
+    "triangles": 90,
+    "actions": []
+  },
+  {
+    "source": "assets/models/fx/pinecone_super.glb",
+    "sha256": "8cd942f3540daaa560b07615454ea14dde0b1ed5016e91feea21933cf1ed288e",
+    "output": "unity/Assets/Resources/Models/fx/pinecone_super.fbx",
+    "triangles": 90,
+    "actions": []
+  },
+  {
+    "source": "assets/models/fx/safe_blue.glb",
+    "sha256": "cf4b7da3f60f0c11acc9991edfc07a17858aa0d48cd21496b76379b85feaee60",
+    "output": "unity/Assets/Resources/Models/fx/safe_blue.fbx",
+    "triangles": 116,
+    "actions": []
+  },
+  {
+    "source": "assets/models/fx/safe_red.glb",
+    "sha256": "eab754145fd109b312453747d1d6febc2a9bba02f6e6e0c7d87eaf362466af3e",
+    "output": "unity/Assets/Resources/Models/fx/safe_red.fbx",
+    "triangles": 84,
+    "actions": []
+  },
+  {
+    "source": "assets/models/heroes/anvil.glb",
+    "sha256": "2a70024dcfd3978a95c1fb0534ac80c9e2fe1ee6c87da5c5ce75ba52d260a345",
+    "output": "unity/Assets/Resources/Models/heroes/anvil.fbx",
+    "triangles": 396,
+    "actions": [
+      "attack",
+      "death",
+      "idle",
+      "run",
+      "super"
+    ]
+  },
+  {
+    "source": "assets/models/heroes/lynx.glb",
+    "sha256": "85182ba4fc3adbf7d9b22e18a9f5642199b53276dc555932e8415af05e2afb90",
+    "output": "unity/Assets/Resources/Models/heroes/lynx.fbx",
+    "triangles": 284,
+    "actions": [
+      "attack",
+      "death",
+      "idle",
+      "run",
+      "super"
+    ]
+  },
+  {
+    "source": "assets/models/heroes/shishka.glb",
+    "sha256": "8710ea0ad0fa2803b4581c9a8c61df6c86cc850d1ffa98ce4014f34825cf847f",
+    "output": "unity/Assets/Resources/Models/heroes/shishka.fbx",
+    "triangles": 700,
+    "actions": [
+      "attack",
+      "death",
+      "idle",
+      "run",
+      "super"
+    ]
+  }
+]

@@ -7,3 +7,15 @@ build/
 *.aab
 *.keystore
 .env
+unity/[Ll]ibrary/
+unity/[Tt]emp/
+unity/[Oo]bj/
+unity/[Ll]ogs/
+unity/[Uu]ser[Ss]ettings/
+unity/[Bb]uilds/
+unity/.utmp/
+unity/*.csproj
+unity/*.sln*
+**/bin/
+**/obj/
+artifacts/unity/

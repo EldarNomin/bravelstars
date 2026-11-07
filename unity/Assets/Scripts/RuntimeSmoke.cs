@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -49,20 +50,57 @@ namespace Bravel
                 yield return Capture("result-" + hero);
                 game.LeaveMatch(); yield return null;
             }
+            yield return PlayerTouchAttack();
             game.StartMatch(0, 1, 0, 1); yield return null;
             game.SendMessage("OnApplicationPause", true); int paused = game.Match.World.Tick;
             yield return new WaitForSecondsRealtime(0.2f); Require(game.Match.World.Tick == paused, "Background advanced match");
             game.SendMessage("OnApplicationPause", false); Require(game.Ui.Paused, "Resume must stay paused"); game.Ui.ShowPause(false);
             game.LeaveMatch(); yield return null;
             if (errors != 0) throw new Exception("Smoke console errors: " + errors);
-            File.WriteAllText(Path.Combine(output, "runtime.txt"), $"RUNTIME_SMOKE_PASSED {Screen.width}x{Screen.height}\nThree heroes; both modes; complete matches; lobby return; pause/resume; simultaneous pointer IDs; pointer cancel; safe-area layout; nonblank offscreen renders.\n");
+            File.WriteAllText(Path.Combine(output, "runtime.txt"), $"RUNTIME_SMOKE_PASSED {Screen.width}x{Screen.height}\nThree heroes; both modes; complete matches; lobby return; pause/resume; raycast and synthetic pointer IDs; player touch attack; safe-area layout; nonblank offscreen renders.\n");
             Debug.Log("RUNTIME_SMOKE_PASSED"); Application.Quit(0);
+        }
+        IEnumerator PlayerTouchAttack()
+        {
+            int map = 0; while (game.Content.Maps[map].mode != "teamfight") map++;
+            game.StartMatch(0, 1, map, 99); yield return null;
+            while (game.Match.World.Mode.Phase == MatchPhase.Countdown)
+            { game.Match.Step(default); game.Match.World.Events.Clear(); }
+            var player = game.Match.Player;
+            Brawler enemy = null;
+            foreach (var brawler in game.Match.World.Brawlers)
+            {
+                if (brawler == player) continue;
+                if (enemy == null && brawler.Team != player.Team) enemy = brawler;
+                else brawler.Alive = false;
+            }
+            Require(enemy != null, "No enemy for player touch attack");
+            player.Position = player.Previous = new Vec(4.5f, 7.5f);
+            enemy.Position = enemy.Previous = new Vec(7.5f, 7.5f);
+            player.Facing = new Vec(-1, 0);
+            var touch = Pointer(game.Ui.Attack, 17); touch.position += new Vector2(-50, 0);
+            var hits = new List<RaycastResult>(); EventSystem.current.RaycastAll(touch, hits);
+            Require(hits.Count > 0 && ExecuteEvents.GetEventHandler<IPointerDownHandler>(hits[0].gameObject) == game.Ui.Attack.gameObject, "Attack edge cannot receive a touch");
+            int ammo = player.Ammo;
+            ExecuteEvents.Execute(game.Ui.Attack.gameObject, touch, ExecuteEvents.pointerDownHandler);
+            ExecuteEvents.Execute(game.Ui.Attack.gameObject, touch, ExecuteEvents.pointerUpHandler);
+            float deadline = Time.realtimeSinceStartup + 2;
+            while (player.Ammo == ammo && Time.realtimeSinceStartup < deadline) yield return null;
+            Require(player.Ammo == ammo - 1 && player.Facing.X > 0.5f, "Player tap did not shoot toward the enemy");
+            game.LeaveMatch(); yield return null;
         }
         void TouchChecks()
         {
             var left = game.Ui.Movement; var right = game.Ui.Attack; var super = game.Ui.Super;
+            CheckActionTouch(right, 14);
+            CheckActionTouch(super, 15);
+            CheckRaycast(left);
+            CheckRaycast(right);
+            CheckRaycast(super);
             PointerEventData a = Pointer(left, 11), b = Pointer(right, 12), c = Pointer(super, 13);
-            left.OnPointerDown(a); right.OnPointerDown(b); super.OnPointerDown(c);
+            ExecuteEvents.Execute(left.gameObject, a, ExecuteEvents.pointerDownHandler);
+            ExecuteEvents.Execute(right.gameObject, b, ExecuteEvents.pointerDownHandler);
+            ExecuteEvents.Execute(super.gameObject, c, ExecuteEvents.pointerDownHandler);
             Require(left.Held && right.Held && super.Held, "Independent pointers were rejected");
             a.position += new Vector2(40, 30); left.OnDrag(a); b.position += new Vector2(30, 20); right.OnDrag(b);
             Require(left.Value.sqrMagnitude > 0 && right.Value.sqrMagnitude > 0, "Concurrent movement/aim");
@@ -77,6 +115,27 @@ namespace Bravel
                 var corners = new Vector3[4]; stick.GetComponent<RectTransform>().GetWorldCorners(corners);
                 var safe = Screen.safeArea; foreach (var corner in corners) Require(corner.x >= safe.xMin - 1 && corner.x <= safe.xMax + 1 && corner.y >= safe.yMin - 1 && corner.y <= safe.yMax + 1, "Stick outside safe area: " + stick.name);
             }
+        }
+        static void CheckRaycast(TouchStick stick)
+        {
+            var hits = new List<RaycastResult>();
+            EventSystem.current.RaycastAll(Pointer(stick, 16), hits);
+            Require(hits.Count > 0 && ExecuteEvents.GetEventHandler<IPointerDownHandler>(hits[0].gameObject) == stick.gameObject,
+                "Pointer raycast cannot reach " + stick.name);
+        }
+        static void CheckActionTouch(TouchStick stick, int pointerId)
+        {
+            var originalRelease = stick.Released;
+            Vector2? released = null;
+            stick.Released = value => released = value;
+            var edge = Pointer(stick, pointerId);
+            edge.position += new Vector2(50, 0);
+            stick.OnPointerDown(edge); stick.OnPointerUp(edge);
+            Require(released.HasValue && released.Value == Vector2.zero, "Tap away from the center must use auto aim");
+            released = null;
+            stick.OnPointerDown(edge); edge.position += new Vector2(0, 50); stick.OnDrag(edge); stick.OnPointerUp(edge);
+            Require(released.HasValue && Mathf.Abs(released.Value.x) < 0.01f && released.Value.y > 0.5f, "Aim must follow the drag direction, not the initial touch position");
+            stick.Released = originalRelease;
         }
         static PointerEventData Pointer(TouchStick stick, int id) => new PointerEventData(EventSystem.current) { pointerId = id, position = RectTransformUtility.WorldToScreenPoint(null, stick.transform.position) };
         static void Require(bool value, string message) { if (!value) throw new Exception(message); }

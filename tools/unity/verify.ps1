@@ -24,6 +24,10 @@ try {
     foreach ($resolution in @(@(1280, 720), @(1600, 720), @(960, 720))) {
         $folder = Join-Path $evidenceRoot ($resolution[0].ToString() + 'x' + $resolution[1])
         New-Item -ItemType Directory -Force -Path $folder | Out-Null
+        foreach ($marker in @('runtime.txt', 'runtime-failed.txt')) {
+            $markerPath = Join-Path $folder $marker
+            if (Test-Path -LiteralPath $markerPath) { Remove-Item -LiteralPath $markerPath }
+        }
         $playerLog = Join-Path $folder 'player.log'
         $playerArgs = @('-batchmode', '-force-d3d11', '-screen-fullscreen', '0', '-screen-width', $resolution[0], '-screen-height', $resolution[1], '-bravelSmoke', '-bravelEvidence', ('"' + $folder + '"'), '-logFile', ('"' + $playerLog + '"'))
         $playerProcess = Start-Process -FilePath $player -ArgumentList $playerArgs -WindowStyle Hidden -PassThru
